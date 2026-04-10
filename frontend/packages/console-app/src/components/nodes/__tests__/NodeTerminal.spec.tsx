@@ -42,12 +42,9 @@ const setupPodCreation = () => {
 const renderAndCreatePod = async () => {
   jest.useFakeTimers();
   render(<NodeTerminal obj={mockNode} />);
+  // Run all timers and flush promises for the async createDebugPod flow
   await act(async () => {
-    await Promise.resolve();
-  });
-  await act(async () => {
-    jest.runOnlyPendingTimers();
-    await Promise.resolve();
+    await jest.runAllTimersAsync();
   });
   jest.useRealTimers();
 };

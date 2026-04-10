@@ -59,7 +59,7 @@ jest.mock('../../projects/CreateProjectListPage', () => ({
   CreateAProjectButton: () => null,
 }));
 
-jest.mock('../../../../../../public/components/start-guide', () => ({
+jest.mock('@console/internal/components/start-guide', () => ({
   withStartGuide: (Component) => Component,
 }));
 

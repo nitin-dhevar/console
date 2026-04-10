@@ -1,10 +1,10 @@
 import type { FC } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
+import { withStartGuide } from '@console/internal/components/start-guide';
 import { FLAGS } from '@console/shared';
 import { DocumentTitle } from '@console/shared/src/components/document-title/DocumentTitle';
 import { useFlag } from '@console/shared/src/hooks/useFlag';
-import { withStartGuide } from '../../../../../public/components/start-guide';
 import NamespacedPage, { NamespacedPageVariants } from '../NamespacedPage';
 import CreateProjectListPage, { CreateAProjectButton } from '../projects/CreateProjectListPage';
 import AddPageLayout from './AddPageLayout';
