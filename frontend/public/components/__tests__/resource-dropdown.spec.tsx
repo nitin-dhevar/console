@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Map as ImmutableMap } from 'immutable';
 
 import { useUserPreference } from '@console/shared/src/hooks/useUserPreference';
@@ -79,26 +80,32 @@ const renderDropdown = (models: K8sKind[], groupToVersionMap = {}, props = {}) =
   );
 };
 
-const openDropdown = () => {
-  fireEvent.click(screen.getByRole('combobox'));
+const openDropdown = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('combobox'));
 };
 
-const typeInSearch = (text: string) => {
+const typeInSearch = async (user: ReturnType<typeof userEvent.setup>, text: string) => {
   const input = screen.getByRole('combobox');
-  fireEvent.change(input, { target: { value: text } });
+  await user.clear(input);
+  if (text) {
+    await user.type(input, text);
+  }
 };
 
 const getMenuItems = () => screen.getAllByRole('menuitem');
 
 describe('ResourceListDropdown', () => {
+  let user: ReturnType<typeof userEvent.setup>;
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseUserPreference.mockReturnValue(['[]', jest.fn(), true]);
     defaultProps.onChange = jest.fn();
+    user = userEvent.setup();
   });
 
   describe('preferred version filtering', () => {
-    it('shows only the preferred version when groupToVersionMap is provided', () => {
+    it('shows only the preferred version when groupToVersionMap is provided', async () => {
       const models = [
         makeModel('Deployment', 'apps', 'v1'),
         makeModel('Deployment', 'apps', 'v1beta1'),
@@ -108,28 +115,28 @@ describe('ResourceListDropdown', () => {
       };
 
       renderDropdown(models, groupToVersionMap);
-      openDropdown();
+      await openDropdown(user);
 
       const items = getMenuItems();
       expect(items).toHaveLength(1);
       expect(items[0]).toHaveTextContent('Deployment');
     });
 
-    it('shows all versions when no preferred version exists', () => {
+    it('shows all versions when no preferred version exists', async () => {
       const models = [
         makeModel('Deployment', 'apps', 'v1'),
         makeModel('Deployment', 'apps', 'v1beta1'),
       ];
 
       renderDropdown(models, {});
-      openDropdown();
+      await openDropdown(user);
 
       expect(getMenuItems()).toHaveLength(2);
     });
   });
 
   describe('search filtering', () => {
-    it('filters resources by reference name (case-insensitive)', () => {
+    it('filters resources by reference name (case-insensitive)', async () => {
       const models = [
         makeModel('Pod', 'core', 'v1'),
         makeModel('Deployment', 'apps', 'v1'),
@@ -137,60 +144,60 @@ describe('ResourceListDropdown', () => {
       ];
 
       renderDropdown(models);
-      openDropdown();
-      typeInSearch('pod');
+      await openDropdown(user);
+      await typeInSearch(user, 'pod');
 
       const items = getMenuItems();
       expect(items).toHaveLength(1);
       expect(items[0]).toHaveTextContent('Pod');
     });
 
-    it('filters resources by short name', () => {
+    it('filters resources by short name', async () => {
       const models = [
         makeModel('Pod', 'core', 'v1', { shortNames: ['po'] }),
         makeModel('Deployment', 'apps', 'v1', { shortNames: ['deploy'] }),
       ];
 
       renderDropdown(models);
-      openDropdown();
-      typeInSearch('deploy');
+      await openDropdown(user);
+      await typeInSearch(user, 'deploy');
 
       const items = getMenuItems();
       expect(items).toHaveLength(1);
       expect(items[0]).toHaveTextContent('Deployment');
     });
 
-    it('shows "No results found" when no resources match', () => {
+    it('shows "No results found" when no resources match', async () => {
       const models = [makeModel('Pod', 'core', 'v1')];
 
       renderDropdown(models);
-      openDropdown();
-      typeInSearch('nonexistent');
+      await openDropdown(user);
+      await typeInSearch(user, 'nonexistent');
 
       expect(screen.getByText('No results found')).toBeInTheDocument();
     });
 
-    it('shows all resources when search is cleared', () => {
+    it('shows all resources when search is cleared', async () => {
       const models = [makeModel('Pod', 'core', 'v1'), makeModel('Deployment', 'apps', 'v1')];
 
       renderDropdown(models);
-      openDropdown();
-      typeInSearch('pod');
+      await openDropdown(user);
+      await typeInSearch(user, 'pod');
       expect(getMenuItems()).toHaveLength(1);
 
-      typeInSearch('');
+      await typeInSearch(user, '');
       expect(getMenuItems()).toHaveLength(2);
     });
   });
 
   describe('MAX_VISIBLE_ITEMS cap', () => {
-    it('caps rendered items at 100 and shows truncation message', () => {
+    it('caps rendered items at 100 and shows truncation message', async () => {
       const models = Array.from({ length: 150 }, (_, i) =>
         makeModel(`Resource${String(i).padStart(3, '0')}`, 'test.io', 'v1'),
       );
 
       renderDropdown(models);
-      openDropdown();
+      await openDropdown(user);
 
       const menu = screen.getByRole('menu');
       const items = within(menu).getAllByRole('menuitem');
@@ -200,40 +207,40 @@ describe('ResourceListDropdown', () => {
       expect(screen.getByText('Showing 100 of 150 resources. Type to filter.')).toBeInTheDocument();
     });
 
-    it('does not show truncation message when items fit within the cap', () => {
+    it('does not show truncation message when items fit within the cap', async () => {
       const models = Array.from({ length: 50 }, (_, i) =>
         makeModel(`Resource${i}`, 'test.io', 'v1'),
       );
 
       renderDropdown(models);
-      openDropdown();
+      await openDropdown(user);
 
       expect(screen.queryByText(/Showing .* of .* resources/)).not.toBeInTheDocument();
     });
 
-    it('filtering below the cap removes the truncation message', () => {
+    it('filtering below the cap removes the truncation message', async () => {
       const models = Array.from({ length: 150 }, (_, i) =>
         makeModel(`Resource${String(i).padStart(3, '0')}`, 'test.io', 'v1'),
       );
 
       renderDropdown(models);
-      openDropdown();
+      await openDropdown(user);
       expect(screen.getByText(/Showing 100 of 150/)).toBeInTheDocument();
 
-      typeInSearch('Resource00');
+      await typeInSearch(user, 'Resource00');
       expect(screen.queryByText(/Showing .* of .* resources/)).not.toBeInTheDocument();
     });
   });
 
   describe('auto-open on typing', () => {
-    it('opens the dropdown when the user starts typing', () => {
+    it('opens the dropdown when the user starts typing', async () => {
       const models = [makeModel('Pod', 'core', 'v1')];
 
       renderDropdown(models);
 
       expect(screen.queryByRole('menu')).not.toBeInTheDocument();
 
-      typeInSearch('pod');
+      await typeInSearch(user, 'pod');
 
       expect(screen.getByRole('menu')).toBeInTheDocument();
     });
