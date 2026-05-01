@@ -588,7 +588,7 @@ func TestHelmRepoGetter_unmarshallConfig(t *testing.T) {
 			clusterScoped:   false,
 		},
 		{
-			name: "Basic auth over HTTP is not supported for cluster-scoped repositories",
+			name: "HTTPS is required for cluster-scoped repositories using basic authentication",
 			helmCRS: &unstructured.Unstructured{
 				Object: map[string]interface{}{
 					"apiVersion": "helm.openshift.io/v1beta1",
@@ -609,13 +609,13 @@ func TestHelmRepoGetter_unmarshallConfig(t *testing.T) {
 				},
 			},
 			repoName:        "repo6",
-			wantsErrMsg:     "Basic authentication is only supported for HTTPS repositories",
+			wantsErrMsg:     "Basic authentication requires HTTPS repository for security",
 			createSecret:    false,
 			createNamespace: false,
 			clusterScoped:   true,
 		},
 		{
-			name: "Basic auth over HTTP is not supported for namespace-scoped repositories",
+			name: "HTTPS is required for namespace-scoped repositories using basic authentication",
 			helmCRS: &unstructured.Unstructured{
 				Object: map[string]interface{}{
 					"apiVersion": "helm.openshift.io/v1beta1",
@@ -636,7 +636,7 @@ func TestHelmRepoGetter_unmarshallConfig(t *testing.T) {
 				},
 			},
 			repoName:        "repo7",
-			wantsErrMsg:     "Basic authentication is only supported for HTTPS repositories",
+			wantsErrMsg:     "Basic authentication requires HTTPS repository for security",
 			createSecret:    false,
 			createNamespace: true,
 			namespace:       "testing",
