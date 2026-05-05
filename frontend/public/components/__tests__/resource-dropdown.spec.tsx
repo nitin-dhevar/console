@@ -191,8 +191,8 @@ describe('ResourceListDropdown', () => {
   });
 
   describe('MAX_VISIBLE_ITEMS cap', () => {
-    it('caps rendered items at 100 and shows truncation message', async () => {
-      const models = Array.from({ length: 150 }, (_, i) =>
+    it('caps rendered items at 250 and shows truncation message', async () => {
+      const models = Array.from({ length: 300 }, (_, i) =>
         makeModel(`Resource${String(i).padStart(3, '0')}`, 'test.io', 'v1'),
       );
 
@@ -201,10 +201,10 @@ describe('ResourceListDropdown', () => {
 
       const menu = screen.getByRole('menu');
       const items = within(menu).getAllByRole('menuitem');
-      // 100 resource items + 1 truncation message (rendered as menuitem)
-      expect(items.length).toBeLessThanOrEqual(101);
+      // 250 resource items + 1 truncation message (rendered as menuitem)
+      expect(items.length).toBeLessThanOrEqual(251);
 
-      expect(screen.getByText('Showing 100 of 150 resources. Type to filter.')).toBeInTheDocument();
+      expect(screen.getByText('Showing 250 of 300 resources. Type to filter.')).toBeInTheDocument();
     });
 
     it('does not show truncation message when items fit within the cap', async () => {
@@ -219,13 +219,13 @@ describe('ResourceListDropdown', () => {
     });
 
     it('filtering below the cap removes the truncation message', async () => {
-      const models = Array.from({ length: 150 }, (_, i) =>
+      const models = Array.from({ length: 300 }, (_, i) =>
         makeModel(`Resource${String(i).padStart(3, '0')}`, 'test.io', 'v1'),
       );
 
       renderDropdown(models);
       await openDropdown(user);
-      expect(screen.getByText(/Showing 100 of 150/)).toBeInTheDocument();
+      expect(screen.getByText(/Showing 250 of 300/)).toBeInTheDocument();
 
       await typeInSearch(user, 'Resource00');
       expect(screen.queryByText(/Showing .* of .* resources/)).not.toBeInTheDocument();
