@@ -14,6 +14,7 @@ import type {
   LaunchOverlay,
   OverlayComponent,
 } from '@console/dynamic-plugin-sdk/src/app/modal-support/OverlayProvider';
+import type { ToastContextValues } from '@console/dynamic-plugin-sdk/src/extensions/console-types';
 import { getGroupVersionKindForResource } from '@console/dynamic-plugin-sdk/src/utils/k8s/k8s-ref';
 import { dateTimeFormatter } from '@console/internal/components/utils/datetime';
 import type { K8sResourceKind } from '@console/internal/module/k8s';
@@ -23,7 +24,6 @@ import {
   TOAST_TIMEOUT_LONG,
 } from '@console/shared/src';
 import { ModalFooterWithAlerts } from '@console/shared/src/components/modals/ModalFooterWithAlerts';
-import type { ToastContextType } from '@console/shared/src/components/toast/ToastContext';
 import { useTelemetry } from '@console/shared/src/hooks/useTelemetry';
 import { useUserPreference } from '@console/shared/src/hooks/useUserPreference';
 import type { ModalComponentProps } from '@console/shared/src/types/modal';
@@ -39,7 +39,7 @@ import type { ExportAppUserSettings } from './types';
 export type ExportApplicationModalProps = ModalComponentProps & {
   name: string;
   namespace: string;
-  toast?: ToastContextType;
+  toast?: ToastContextValues;
   exportResource?: K8sResourceKind;
 };
 
@@ -255,7 +255,7 @@ export const ExportApplicationModalOverlay: OverlayComponent<ExportApplicationMo
 export const handleExportApplication = async (
   name: string,
   namespace: string,
-  toast: ToastContextType,
+  toast: ToastContextValues,
   launchModal: LaunchOverlay,
 ) => {
   try {

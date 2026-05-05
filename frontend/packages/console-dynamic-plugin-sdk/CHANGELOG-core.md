@@ -10,6 +10,10 @@ For current development version of Console, use `4.x.0-prerelease.n` packages.
 For older 1.x plugin SDK packages, refer to "OpenShift Console Versions vs SDK Versions" compatibility
 table in [Console dynamic plugins README](./README.md).
 
+## 4.23.0-prerelease.1 - TBD
+
+- Add `useToast` hook for showing toast notifications ([CONSOLE-5273], [#16400])
+
 ## 4.22.0-prerelease.3 - 2026-04-24
 
 - **Breaking**: The `dynamic-core-api`, `console-fetch`, and `console-fetch-utils` modules are no longer provided. Console plugin APIs should be imported from the package index. ([OCPBUGS-81319], [#15655])
@@ -206,6 +210,7 @@ table in [Console dynamic plugins README](./README.md).
 [CONSOLE-5063]: https://issues.redhat.com/browse/CONSOLE-5063
 [CONSOLE-5093]: https://issues.redhat.com/browse/CONSOLE-5093
 [CONSOLE-5108]: https://issues.redhat.com/browse/CONSOLE-5108
+[CONSOLE-5273]: https://issues.redhat.com/browse/CONSOLE-5273
 [OCPBUGS-19048]: https://issues.redhat.com/browse/OCPBUGS-19048
 [OCPBUGS-30077]: https://issues.redhat.com/browse/OCPBUGS-30077
 [OCPBUGS-31355]: https://issues.redhat.com/browse/OCPBUGS-31355
@@ -284,3 +289,4 @@ table in [Console dynamic plugins README](./README.md).
 [#16043]: https://github.com/openshift/console/pull/16043
 [#16057]: https://github.com/openshift/console/pull/16057
 [#16097]: https://github.com/openshift/console/pull/16097
+[#16400]: https://github.com/openshift/console/pull/16400

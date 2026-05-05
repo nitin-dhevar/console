@@ -1,13 +1,14 @@
 import { useContext } from 'react';
+import { AlertVariant } from '@patternfly/react-core';
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ToastContextValues } from '@console/dynamic-plugin-sdk/src/extensions/console-types';
 import { renderWithProviders } from '../../../test-utils/unit-test-utils';
-import type { ToastContextType } from '../ToastContext';
-import ToastContext, { ToastVariant } from '../ToastContext';
+import ToastContext from '../ToastContext';
 import ToastProvider from '../ToastProvider';
 
 describe('ToastProvider', () => {
-  let toastContext: ToastContextType;
+  let toastContext: ToastContextValues;
 
   const TestComponent = () => {
     toastContext = useContext(ToastContext);
@@ -41,12 +42,12 @@ describe('ToastProvider', () => {
       toastContext.addToast({
         id: id1,
         title: 'test success',
-        variant: ToastVariant.success,
+        variant: AlertVariant.success,
         content: 'description 1',
       });
       id2 = toastContext.addToast({
         title: 'test danger',
-        variant: ToastVariant.danger,
+        variant: AlertVariant.danger,
         content: 'description 2',
       });
     });
@@ -82,7 +83,7 @@ describe('ToastProvider', () => {
     act(() => {
       toastContext.addToast({
         title: 'test success',
-        variant: ToastVariant.success,
+        variant: AlertVariant.success,
         content: 'description 1',
         actions: [
           {
@@ -119,7 +120,7 @@ describe('ToastProvider', () => {
     act(() => {
       toastContext.addToast({
         title: 'test success',
-        variant: ToastVariant.success,
+        variant: AlertVariant.success,
         content: 'description 1',
         actions: [
           {
@@ -153,7 +154,7 @@ describe('ToastProvider', () => {
     act(() => {
       toastContext.addToast({
         title: 'test success',
-        variant: ToastVariant.success,
+        variant: AlertVariant.success,
         content: 'description 1',
         actions: [
           {
@@ -192,7 +193,7 @@ describe('ToastProvider', () => {
     act(() => {
       toastContext.addToast({
         title: 'test success',
-        variant: ToastVariant.success,
+        variant: AlertVariant.success,
         content: 'description 1',
         onClose: toastClose,
         dismissible: true,

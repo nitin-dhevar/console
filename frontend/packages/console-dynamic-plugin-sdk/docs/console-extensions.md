@@ -674,8 +674,8 @@ This extension can be used to contribute a navigation item that points to a spec
 | `id` | `string` | no | A unique identifier for this item. |
 | `name` | `string` | no | The name of this item. |
 | `href` | `string` | no | The link href value. |
-| `perspective` | `string` | yes | The perspective ID to which this item belongs to. If not specified, contributes to the default perspective. |
-| `section` | `string` | yes | Navigation section to which this item belongs to. If not specified, render this item as a top level link. |
+| `perspective` | `string` | yes | The perspective ID this item belongs to. If not specified, contributes to the default perspective. |
+| `section` | `string` | yes | Navigation section this item belongs to. If not specified, render this item as a top level link. |
 | `dataAttributes` | `{ [key: string]: string; }` | yes | Adds data attributes to the DOM. |
 | `startsWith` | `string[]` | yes | Mark this item as active when the URL starts with one of these paths. |
 | `insertBefore` | `string \| string[]` | yes | Insert this item before the item referenced here. For arrays, the first one found in order is used. |
@@ -697,8 +697,8 @@ This extension can be used to contribute a navigation item that points to a clus
 | ---- | ---------- | -------- | ----------- |
 | `id` | `string` | no | A unique identifier for this item. |
 | `model` | `ExtensionK8sModel` | no | The model for which this nav item links to. |
-| `perspective` | `string` | yes | The perspective ID to which this item belongs to. If not specified, contributes to the default perspective. |
-| `section` | `string` | yes | Navigation section to which this item belongs to. If not specified, render this item as a top level link. |
+| `perspective` | `string` | yes | The perspective ID this item belongs to. If not specified, contributes to the default perspective. |
+| `section` | `string` | yes | Navigation section this item belongs to. If not specified, render this item as a top level link. |
 | `dataAttributes` | `{ [key: string]: string; }` | yes | Adds data attributes to the DOM. |
 | `startsWith` | `string[]` | yes | Mark this item as active when the URL starts with one of these paths. |
 | `insertBefore` | `string \| string[]` | yes | Insert this item before the item referenced here. For arrays, the first one found in order is used. |
@@ -719,8 +719,8 @@ This extension can be used to contribute a navigation item that points to a name
 | ---- | ---------- | -------- | ----------- |
 | `id` | `string` | no | A unique identifier for this item. |
 | `model` | `ExtensionK8sModel` | no | The model for which this nav item links to. |
-| `perspective` | `string` | yes | The perspective ID to which this item belongs to. If not specified, contributes to the default perspective. |
-| `section` | `string` | yes | Navigation section to which this item belongs to. If not specified, render this item as a top level link. |
+| `perspective` | `string` | yes | The perspective ID this item belongs to. If not specified, contributes to the default perspective. |
+| `section` | `string` | yes | Navigation section this item belongs to. If not specified, render this item as a top level link. |
 | `dataAttributes` | `{ [key: string]: string; }` | yes | Adds data attributes to the DOM. |
 | `startsWith` | `string[]` | yes | Mark this item as active when the URL starts with one of these paths. |
 | `insertBefore` | `string \| string[]` | yes | Insert this item before the item referenced here. For arrays, the first one found in order is used. |
@@ -742,7 +742,7 @@ This extension can be used to define a new section of navigation items in the na
 | `id` | `string` | no | A unique identifier for this item. |
 | `insertBefore` | `string \| string[]` | yes | Insert this item before the item referenced here. For arrays, the first one found in order is used. |
 | `insertAfter` | `string \| string[]` | yes | Insert this item after the item referenced here. For arrays, the first one found in order is used. `insertBefore` takes precedence. |
-| `perspective` | `string` | yes | The perspective ID to which this item belongs to. If not specified, contributes to the default perspective. |
+| `perspective` | `string` | yes | The perspective ID this item belongs to. If not specified, contributes to the default perspective. |
 | `dataAttributes` | `{ [key: string]: string; }` | yes | Adds data attributes to the DOM. |
 | `name` | `string` | yes | Name of this section. If not supplied, only a separator will be shown above the section. |
 
@@ -759,10 +759,10 @@ This extension can be used to add a separator between navigation items in the na
 | Name | Value Type | Optional | Description |
 | ---- | ---------- | -------- | ----------- |
 | `id` | `string` | no | A unique identifier for this item. |
+| `section` | `string` | yes | Navigation section this item belongs to. If not specified, render this item as a top level link. |
 | `insertBefore` | `string \| string[]` | yes | Insert this item before the item referenced here. For arrays, the first one found in order is used. |
 | `insertAfter` | `string \| string[]` | yes | Insert this item after the item referenced here. For arrays, the first one found in order is used. `insertBefore` takes precedence. |
-| `perspective` | `string` | yes | The perspective ID to which this item belongs to. If not specified, contributes to the default perspective. |
-| `section` | `string` | yes | Navigation section to which this item belongs to. If not specified, render this item as a top level link. |
+| `perspective` | `string` | yes | The perspective ID this item belongs to. If not specified, contributes to the default perspective. |
 | `dataAttributes` | `{ [key: string]: string; }` | yes | Adds data attributes to the DOM. |
 
 ---
@@ -809,7 +809,7 @@ Adds a new page to the Console router.<br/><br/>Console application uses [React 
 | ---- | ---------- | -------- | ----------- |
 | `component` | `CodeRef<React.ComponentType<{}>>` | no | The component to be rendered when the route matches. |
 | `path` | `string \| string[]` | no | Valid URL path or array of paths. Note that React Router v7 does not use `path-to-regexp`. |
-| `perspective` | `string` | yes | The perspective to which this page belongs to. If not specified, applies to all perspectives. |
+| `perspective` | `string` | yes | The perspective this page belongs to. If not specified, applies to all perspectives. |
 | `exact` | `boolean` | yes | When `true`, the path must match the URL exactly. |
 
 ---
@@ -824,8 +824,8 @@ Adds a new standalone page rendered outside the common Console page layout.<br/>
 
 | Name | Value Type | Optional | Description |
 | ---- | ---------- | -------- | ----------- |
-| `component` | `CodeRef<React.ComponentType<{}>>` | no | The component to be rendered when the route matches. |
 | `path` | `string \| string[]` | no | Valid URL path or array of paths. Note that React Router v7 does not use `path-to-regexp`. |
+| `component` | `CodeRef<React.ComponentType<{}>>` | no | The component to be rendered when the route matches. |
 | `exact` | `boolean` | yes | When `true`, the path must match the URL exactly. |
 
 ---
