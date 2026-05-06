@@ -33,5 +33,5 @@ export const getErrorMessage = (t: ConsoleTFunction, error: unknown): string => 
   if (error instanceof String) {
     return error.toString();
   }
-  return t('Unexpected error');
+  return t('vsphere-plugin~Unexpected error');
 };

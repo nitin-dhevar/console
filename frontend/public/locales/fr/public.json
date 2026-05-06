@@ -1806,14 +1806,5 @@
   "Delete {{kind}}": "Supprimer {{kind}}",
   "Disable": "Désactiver",
   "Disabled": "Désactivé",
-  "Enabled": "Activé",
-  "Failed to load kubecontrollermanager": "Échec du chargement de kubecontrollermanager",
-  "Failed to parse cloud provider config {{cm}}": "Échec de l'analyse de la configuration du fournisseur de cloud {{cm}}",
-  "The following content was expected to be defined in the configMap: {{ expectedValues }}": "Le contenu suivant devait être défini dans la configMap : {{ expectedValues }}",
-  "Failed to persist {{secret}}": "Échec de la persistance {{secret}}",
-  "Failed to patch kubecontrollermanager": "Échec de l’application des correctifs à kubecontrollermanager",
-  "Failed to patch cloud provider config": "Échec de la correction de la configuration du fournisseur de cloud",
-  "Failed to add taint to nodes": "Échec de l'ajout d’une altération aux nœuds",
-  "Failed to patch infrastructure spec": "Échec de la correction des spécifications d’infrastructure",
-  "Unexpected error": "Erreur inattendue"
+  "Enabled": "Activé"
 }

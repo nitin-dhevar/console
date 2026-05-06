@@ -1806,14 +1806,5 @@
   "Delete {{kind}}": "{{kind}} 삭제",
   "Disable": "비활성화",
   "Disabled": "비활성화됨",
-  "Enabled": "활성화됨",
-  "Failed to load kubecontrollermanager": "kubecontrollermanager 로드 실패",
-  "Failed to parse cloud provider config {{cm}}": "클라우드 공급자 구성{{cm}}을 구문 분석하지 못했습니다",
-  "The following content was expected to be defined in the configMap: {{ expectedValues }}": "configMap에 다음 콘텐츠를 정의해야 합니다. {{ expectedValues }}",
-  "Failed to persist {{secret}}": "{{secret}}을/를 저장하지 못했습니다",
-  "Failed to patch kubecontrollermanager": "kubecontrollermanager 패치 실패",
-  "Failed to patch cloud provider config": "클라우드 공급자 구성을 패치하지 못했습니다",
-  "Failed to add taint to nodes": "노드에 테인트를 추가할 수 없음",
-  "Failed to patch infrastructure spec": "인프라 사양을 패치하지 못했습니다",
-  "Unexpected error": "예기치 않은 오류"
+  "Enabled": "활성화됨"
 }
