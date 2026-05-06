@@ -135,7 +135,7 @@ const updateYamlFormat = (
 ): string => {
   let cmCfg: ProviderCM;
   try {
-    cmCfg = safeLoad(cloudProviderConfig.data.config);
+    cmCfg = safeLoad(cloudProviderConfig.data.config) as ProviderCM;
   } catch (e) {
     throw new PersistError(
       t('vsphere-plugin~Failed to parse cloud provider config {{cm}}', {

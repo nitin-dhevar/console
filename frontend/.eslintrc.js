@@ -127,6 +127,18 @@ module.exports = {
       version: 'detect',
     },
   },
+  overrides: [
+    {
+      files: ['e2e/**/*.ts'],
+      parserOptions: {
+        project: './e2e/tsconfig.json',
+      },
+      rules: {
+        'no-console': 'off',
+        'no-empty-pattern': 'off',
+      },
+    },
+  ],
   globals: {
     process: 'readonly',
     React: true,
