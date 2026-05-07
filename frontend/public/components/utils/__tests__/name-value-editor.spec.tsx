@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FC } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { NameValueEditor } from '../../../components/utils/name-value-editor';
+import { NameValueEditor, PairValue } from '../../../components/utils/name-value-editor';
 
 jest.mock('react-i18next');
 
@@ -11,7 +11,7 @@ const NameValueEditorHarness: FC<{
   initialPairs: Array<[string, string, number]>;
   onUpdate: jest.Mock;
 }> = ({ initialPairs, onUpdate }) => {
-  const [pairs, setPairs] = useState(initialPairs);
+  const [pairs, setPairs] = useState<PairValue[][]>(initialPairs);
   return (
     <NameValueEditor
       nameValuePairs={pairs}
