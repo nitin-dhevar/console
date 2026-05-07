@@ -1,9 +1,8 @@
-import { useRef } from 'react';
-import type { FC, ChangeEvent, Key } from 'react';
+import { useCallback } from 'react';
+import type { FC, Key } from 'react';
 import * as _ from 'lodash';
-import { css } from '@patternfly/react-styles';
-import { useDrag, useDrop } from 'react-dnd';
-import { DRAGGABLE_TYPE } from './draggable-item-types';
+import type { DragDropSortProps, DraggableObject } from '@patternfly/react-drag-drop';
+import { DragDropSort } from '@patternfly/react-drag-drop';
 import {
   ActionList,
   ActionListGroup,
@@ -11,20 +10,15 @@ import {
   Button,
   Grid,
   GridItem,
+  TextInput,
   Tooltip,
 } from '@patternfly/react-core';
-import { GripVerticalIcon, MinusCircleIcon, PlusCircleIcon } from '@patternfly/react-icons';
+import type { TextInputProps } from '@patternfly/react-core';
+import { MinusCircleIcon, PlusCircleIcon } from '@patternfly/react-icons';
 import { useTranslation } from 'react-i18next';
 
 import { NameValueEditorPair, EnvFromPair, EnvType } from './types';
 import { ValueFromPair } from './value-from-pair';
-import withDragDropContext from './drag-drop-context';
-
-interface DragItem {
-  type: string;
-  index: number;
-  rowSourceId: number;
-}
 
 export type PairValue = string | number | Record<string, unknown>;
 
@@ -68,29 +62,22 @@ interface PairElementProps {
   readOnly: boolean;
   index: number;
   pair: PairValue[];
-  allowSorting: boolean;
-  onChange: (e: ChangeEvent<HTMLInputElement>, index: number, type: NameValueEditorPair) => void;
+  onChange: (value: string, index: number, type: NameValueEditorPair) => void;
   onRemove: (index: number) => void;
-  onMove: (dragIndex: number, hoverIndex: number) => void;
-  rowSourceId: number;
   configMaps?: Record<string, unknown>;
   secrets?: Record<string, unknown>;
   isEmpty: boolean;
-  disableReorder: boolean;
   toolTip?: string;
   alwaysAllowRemove: boolean;
 }
 
 interface EnvFromPairElementProps {
-  nameString?: string;
   valueString: string;
   readOnly: boolean;
   index: number;
   pair: PairValue[];
-  onChange: (e: ChangeEvent<HTMLInputElement>, index: number, type: EnvFromPair) => void;
+  onChange: (value: string, index: number, type: EnvFromPair) => void;
   onRemove: (index: number) => void;
-  onMove: (dragIndex: number, hoverIndex: number) => void;
-  rowSourceId: number;
   configMaps?: Record<string, unknown>;
   secrets?: Record<string, unknown>;
   serviceAccounts?: Record<string, unknown>;
@@ -102,152 +89,77 @@ const PairElement: FC<PairElementProps> = ({
   readOnly,
   index,
   pair,
-  allowSorting,
   onChange,
   onRemove,
-  onMove,
-  rowSourceId,
   configMaps,
   secrets,
   isEmpty,
-  disableReorder,
   toolTip,
   alwaysAllowRemove,
 }) => {
-  const { t } = useTranslation();
-  const ref = useRef<HTMLDivElement>(null);
-
-  const [{ isDragging }, drag, dragPreview] = useDrag<DragItem, void, { isDragging: boolean }>({
-    item: { type: DRAGGABLE_TYPE.ENV_ROW, index, rowSourceId },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
-
-  const [, drop] = useDrop<DragItem, void, {}>({
-    accept: DRAGGABLE_TYPE.ENV_ROW,
-    hover: (item, monitor) => {
-      if (!ref.current) {
-        return;
-      }
-      const dragIndex = item.index;
-      const hoverIndex = index;
-      if (dragIndex === hoverIndex || item.rowSourceId !== rowSourceId) {
-        return;
-      }
-
-      const hoverBoundingRect = ref.current.getBoundingClientRect();
-      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
-      const clientOffset = monitor.getClientOffset();
-      if (!clientOffset) {
-        return;
-      }
-      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
-
-      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
-        return;
-      }
-      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
-        return;
-      }
-
-      onMove(dragIndex, hoverIndex);
-      item.index = hoverIndex;
-    },
-  });
+  const { t } = useTranslation('public');
 
   const handleRemove = () => onRemove(index);
-  const handleChangeName = (e: ChangeEvent<HTMLInputElement>) =>
-    onChange(e, index, NameValueEditorPair.Name);
-  const handleChangeValue = (e: ChangeEvent<HTMLInputElement>) =>
-    onChange(e, index, NameValueEditorPair.Value);
+  const handleChangeName: TextInputProps['onChange'] = (_event, value) =>
+    onChange(value, index, NameValueEditorPair.Name);
+  const handleChangeValue: TextInputProps['onChange'] = (_event, value) =>
+    onChange(value, index, NameValueEditorPair.Value);
+  const handleChangeValueFromPair = (e: { target: { value: string } }) =>
+    onChange(e.target.value, index, NameValueEditorPair.Value);
 
   return (
-    <div
-      className="pf-v6-l-grid__item"
-      ref={(node) => {
-        ref.current = node;
-        drop(node);
-        dragPreview(node);
-      }}
-    >
-      <Grid
-        hasGutter
-        className={css(isDragging ? 'pairs-list__row-dragging' : 'pairs-list__row')}
-        data-test="pairs-list-row"
-      >
-        {allowSorting && !readOnly && (
-          <GridItem span={1} className="pairs-list__action">
-            <div ref={disableReorder ? undefined : drag}>
-              <Button
-                icon={<GripVerticalIcon className="pairs-list__action-icon--reorder" />}
-                type="button"
-                className="pairs-list__action-icon"
-                tabIndex={-1}
-                isDisabled={disableReorder}
-                variant="plain"
-                aria-label={t('public~Drag to reorder')}
-              />
-            </div>
-          </GridItem>
-        )}
-        <GridItem span={5} className="pairs-list__name-field">
-          <span className={css('pf-v6-c-form-control', { 'pf-m-disabled': readOnly })}>
-            <input
-              type="text"
-              data-test="pairs-list-name"
-              placeholder={nameString}
-              value={pair[NameValueEditorPair.Name] as string}
-              onChange={handleChangeName}
-              disabled={readOnly}
-            />
-          </span>
+    <Grid hasGutter className="pairs-list__row pf-v6-u-flex-grow-1" data-test="pairs-list-row">
+      <GridItem span={5} className="pairs-list__name-field">
+        <TextInput
+          type="text"
+          data-test="pairs-list-name"
+          placeholder={nameString}
+          aria-label={nameString || t('Key')}
+          value={pair[NameValueEditorPair.Name] as string}
+          onChange={handleChangeName}
+          isDisabled={readOnly}
+        />
+      </GridItem>
+      {_.isPlainObject(pair[NameValueEditorPair.Value]) ? (
+        <GridItem span={5} className="pairs-list__value-pair-field">
+          <ValueFromPair
+            data-test="pairs-list-value"
+            pair={pair[NameValueEditorPair.Value]}
+            configMaps={configMaps}
+            secrets={secrets}
+            onChange={handleChangeValueFromPair}
+            disabled={readOnly}
+          />
         </GridItem>
-        {_.isPlainObject(pair[NameValueEditorPair.Value]) ? (
-          <GridItem span={5} className="pairs-list__value-pair-field">
-            <ValueFromPair
-              data-test="pairs-list-value"
-              pair={pair[NameValueEditorPair.Value]}
-              configMaps={configMaps}
-              secrets={secrets}
-              onChange={handleChangeValue}
-              disabled={readOnly}
+      ) : (
+        <GridItem span={5} className="pairs-list__value-field">
+          <TextInput
+            type="text"
+            data-test="pairs-list-value"
+            placeholder={valueString}
+            aria-label={valueString || t('Value')}
+            value={(pair[NameValueEditorPair.Value] as string) || ''}
+            onChange={handleChangeValue}
+            isDisabled={readOnly}
+          />
+        </GridItem>
+      )}
+      {!readOnly && (
+        <GridItem span={1} className="pairs-list__action">
+          <Tooltip content={toolTip || t('Remove')}>
+            <Button
+              icon={<MinusCircleIcon className="pairs-list__delete-icon" />}
+              type="button"
+              data-test="delete-button"
+              aria-label={t('Delete')}
+              onClick={handleRemove}
+              isDisabled={isEmpty && !alwaysAllowRemove}
+              variant="plain"
             />
-          </GridItem>
-        ) : (
-          <GridItem span={5} className="pairs-list__value-field">
-            <span className={css('pf-v6-c-form-control', { 'pf-m-disabled': readOnly })}>
-              <input
-                type="text"
-                data-test="pairs-list-value"
-                placeholder={valueString}
-                value={(pair[NameValueEditorPair.Value] as string) || ''}
-                onChange={handleChangeValue}
-                disabled={readOnly}
-              />
-            </span>
-          </GridItem>
-        )}
-        {!readOnly && (
-          <GridItem span={1} className="pairs-list__action">
-            <Tooltip content={toolTip || t('public~Remove')}>
-              <Button
-                icon={<MinusCircleIcon className="pairs-list__delete-icon" />}
-                type="button"
-                data-test="delete-button"
-                aria-label={t('public~Delete')}
-                className={css({
-                  'pairs-list__span-btns': allowSorting,
-                })}
-                onClick={handleRemove}
-                isDisabled={isEmpty && !alwaysAllowRemove}
-                variant="plain"
-              />
-            </Tooltip>
-          </GridItem>
-        )}
-      </Grid>
-    </div>
+          </Tooltip>
+        </GridItem>
+      )}
+    </Grid>
   );
 };
 
@@ -258,131 +170,61 @@ const EnvFromPairElement: FC<EnvFromPairElementProps> = ({
   pair,
   onChange,
   onRemove,
-  onMove,
-  rowSourceId,
   configMaps,
   secrets,
   serviceAccounts,
 }) => {
-  const { t } = useTranslation();
-  const ref = useRef<HTMLDivElement>(null);
-
-  const [{ isDragging }, drag, dragPreview] = useDrag<DragItem, void, { isDragging: boolean }>({
-    item: { type: DRAGGABLE_TYPE.ENV_FROM_ROW, index, rowSourceId },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
-
-  const [, drop] = useDrop<DragItem, void, {}>({
-    accept: DRAGGABLE_TYPE.ENV_FROM_ROW,
-    hover: (item, monitor) => {
-      if (!ref.current) {
-        return;
-      }
-      const dragIndex = item.index;
-      const hoverIndex = index;
-      if (dragIndex === hoverIndex || item.rowSourceId !== rowSourceId) {
-        return;
-      }
-
-      const hoverBoundingRect = ref.current.getBoundingClientRect();
-      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
-      const clientOffset = monitor.getClientOffset();
-      if (!clientOffset) {
-        return;
-      }
-      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
-
-      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
-        return;
-      }
-      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
-        return;
-      }
-
-      onMove(dragIndex, hoverIndex);
-      item.index = hoverIndex;
-    },
-  });
+  const { t } = useTranslation('public');
 
   const handleRemove = () => onRemove(index);
-  const handleChangePrefix = (e: ChangeEvent<HTMLInputElement>) =>
-    onChange(e, index, EnvFromPair.Prefix);
-  const handleChangeResource = (e: ChangeEvent<HTMLInputElement>) =>
-    onChange(e, index, EnvFromPair.Resource);
-
-  const deleteButton = (
-    <>
-      <MinusCircleIcon className="pairs-list__side-btn pairs-list__delete-icon" />
-      <span className="pf-v6-u-screen-reader">{t('public~Delete')}</span>
-    </>
-  );
+  const handleChangePrefix: TextInputProps['onChange'] = (_event, value) =>
+    onChange(value, index, EnvFromPair.Prefix);
+  const handleChangeResource = (e: { target: { value: string } }) =>
+    onChange(e.target.value, index, EnvFromPair.Resource);
 
   return (
-    <div
-      className="pf-v6-l-grid__item"
-      ref={(node) => {
-        ref.current = node;
-        drop(node);
-        dragPreview(node);
-      }}
-    >
-      <Grid hasGutter className={css(isDragging ? 'pairs-list__row-dragging' : 'pairs-list__row')}>
-        {!readOnly && (
-          <div ref={drag} className="pf-v6-l-grid__item pf-m-1-col pairs-list__action">
+    <Grid hasGutter className="pairs-list__row pf-v6-u-flex-grow-1">
+      <GridItem span={5} className="pairs-list__value-pair-field">
+        <ValueFromPair
+          pair={pair[EnvFromPair.Resource]}
+          configMaps={configMaps}
+          secrets={secrets}
+          serviceAccounts={serviceAccounts}
+          onChange={handleChangeResource}
+          disabled={readOnly}
+        />
+      </GridItem>
+      <GridItem span={5} className="pairs-list__name-field">
+        <TextInput
+          data-test-id="env-prefix"
+          type="text"
+          placeholder={valueString}
+          aria-label={valueString || t('Prefix (optional)')}
+          value={pair[EnvFromPair.Prefix] as string}
+          onChange={handleChangePrefix}
+          isDisabled={readOnly}
+        />
+      </GridItem>
+      {readOnly ? null : (
+        <GridItem span={1} className="pairs-list__action">
+          <Tooltip content={t('Remove')}>
             <Button
-              icon={<GripVerticalIcon className="pairs-list__action-icon--reorder" />}
+              icon={<MinusCircleIcon className="pairs-list__side-btn pairs-list__delete-icon" />}
               type="button"
-              className="pairs-list__action-icon"
-              tabIndex={-1}
+              data-test-id="pairs-list__delete-from-btn"
+              aria-label={t('Delete')}
+              className="pairs-list__span-btns"
+              onClick={handleRemove}
               variant="plain"
-              aria-label={t('public~Drag to reorder')}
             />
-          </div>
-        )}
-        <GridItem span={5} className="pairs-list__value-pair-field">
-          <ValueFromPair
-            pair={pair[EnvFromPair.Resource]}
-            configMaps={configMaps}
-            secrets={secrets}
-            serviceAccounts={serviceAccounts}
-            onChange={handleChangeResource}
-            disabled={readOnly}
-          />
+          </Tooltip>
         </GridItem>
-        <GridItem span={5} className="pairs-list__name-field">
-          <span className={css('pf-v6-c-form-control', { 'pf-m-disabled': readOnly })}>
-            <input
-              data-test-id="env-prefix"
-              type="text"
-              placeholder={valueString}
-              value={pair[EnvFromPair.Prefix] as string}
-              onChange={handleChangePrefix}
-              disabled={readOnly}
-            />
-          </span>
-        </GridItem>
-        {readOnly ? null : (
-          <GridItem span={1} className="pairs-list__action">
-            <Tooltip content={t('public~Remove')}>
-              <Button
-                icon={deleteButton}
-                type="button"
-                data-test-id="pairs-list__delete-from-btn"
-                className="pairs-list__span-btns"
-                onClick={handleRemove}
-                variant="plain"
-              />
-            </Tooltip>
-          </GridItem>
-        )}
-      </Grid>
-    </div>
+      )}
+    </Grid>
   );
 };
 
-const NameValueEditorInner: FC<NameValueEditorProps> = ({
+export const NameValueEditor: FC<NameValueEditorProps> = ({
   nameValuePairs,
   updateParentData,
   nameValueId = 0,
@@ -396,9 +238,9 @@ const NameValueEditorInner: FC<NameValueEditorProps> = ({
   onLastItemRemoved,
   ...props
 }) => {
-  const { t } = useTranslation();
-  const nameString = props.nameString || t('public~Key');
-  const valueString = props.valueString || t('public~Value');
+  const { t } = useTranslation('public');
+  const nameString = props.nameString || t('Key');
+  const valueString = props.valueString || t('Value');
 
   const handleAppend = () => {
     updateParentData(
@@ -431,56 +273,89 @@ const NameValueEditorInner: FC<NameValueEditorProps> = ({
     }
   };
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>, i: number, type: NameValueEditorPair) => {
+  const handleChange = (value: string, i: number, type: NameValueEditorPair) => {
     const pairs = _.cloneDeep(nameValuePairs);
     pairs[i][
       type === NameValueEditorPair.Name ? NameValueEditorPair.Name : NameValueEditorPair.Value
-    ] = e.target.value;
+    ] = value;
     updateParentData({ nameValuePairs: pairs }, nameValueId);
   };
 
-  const handleMove = (dragIndex: number, hoverIndex: number) => {
-    const pairs = _.cloneDeep(nameValuePairs);
-    const movedPair = pairs[dragIndex];
-    pairs[dragIndex] = pairs[hoverIndex];
-    pairs[hoverIndex] = movedPair;
-    updateParentData({ nameValuePairs: pairs }, nameValueId);
-  };
+  const handleDrop = useCallback<DragDropSortProps['onDrop']>(
+    (_event, newItems) => {
+      const pairById = new Map(
+        nameValuePairs.map((p) => [`pair-${p[NameValueEditorPair.Index]}`, p]),
+      );
+      const newPairs = newItems.map((item) => pairById.get(item.id as string)!);
+      updateParentData({ nameValuePairs: newPairs }, nameValueId);
+    },
+    [nameValuePairs, nameValueId, updateParentData],
+  );
 
-  const pairElems = nameValuePairs.map((pair, i) => {
-    const key = _.get(pair, [NameValueEditorPair.Index], i) as Key;
-    const isEmpty = nameValuePairs.length === 1 && nameValuePairs[0].every((value) => !value);
-    return (
-      <PairElement
-        onChange={handleChange}
-        index={i}
-        nameString={nameString}
-        valueString={valueString}
-        allowSorting={allowSorting}
-        readOnly={readOnly}
-        pair={pair}
-        key={key}
-        onRemove={handleRemove}
-        onMove={handleMove}
-        rowSourceId={nameValueId}
-        configMaps={configMaps}
-        secrets={secrets}
-        isEmpty={isEmpty}
-        disableReorder={nameValuePairs.length === 1}
-        toolTip={toolTip}
-        alwaysAllowRemove={!!onLastItemRemoved}
-      />
-    );
-  });
+  const useSorting = allowSorting && !readOnly && nameValuePairs.length > 1;
+  const isEmpty = nameValuePairs.length === 1 && nameValuePairs[0].every((value) => !value);
+
+  const makePairElement = (pair: PairValue[], i: number) => (
+    <PairElement
+      onChange={handleChange}
+      index={i}
+      nameString={nameString}
+      valueString={valueString}
+      readOnly={readOnly}
+      pair={pair}
+      onRemove={handleRemove}
+      configMaps={configMaps}
+      secrets={secrets}
+      isEmpty={isEmpty}
+      toolTip={toolTip}
+      alwaysAllowRemove={!!onLastItemRemoved}
+    />
+  );
 
   return (
     <Grid hasGutter>
-      {!readOnly && allowSorting && <GridItem span={1} />}
-      <GridItem span={5}>{nameString}</GridItem>
-      <GridItem span={5}>{valueString}</GridItem>
-      <GridItem span={1} />
-
-      {pairElems}
+      {useSorting ? (
+        <>
+          <GridItem span={12}>
+            <div className="pf-v6-u-display-flex">
+              <div className="pairs-list__drag-spacer" />
+              <Grid hasGutter className="pf-v6-u-flex-grow-1">
+                <GridItem span={5}>{nameString}</GridItem>
+                <GridItem span={5}>{valueString}</GridItem>
+                <GridItem span={1} />
+              </Grid>
+            </div>
+          </GridItem>
+          <GridItem span={12}>
+            <DragDropSort
+              items={nameValuePairs.map(
+                (pair, i): DraggableObject => ({
+                  id: `pair-${(pair[NameValueEditorPair.Index] as number) ?? i}`,
+                  props: { className: 'pf-v6-u-display-flex pf-v6-u-align-items-center' },
+                  content: makePairElement(pair, i),
+                }),
+              )}
+              onDrop={handleDrop}
+            >
+              <div className="pairs-list__drag-container" />
+            </DragDropSort>
+          </GridItem>
+        </>
+      ) : (
+        <>
+          <GridItem span={5}>{nameString}</GridItem>
+          <GridItem span={5}>{valueString}</GridItem>
+          <GridItem span={1} />
+          {nameValuePairs.map((pair, i) => {
+            const key = (pair[NameValueEditorPair.Index] as Key) ?? i;
+            return (
+              <GridItem span={12} key={key}>
+                {makePairElement(pair, i)}
+              </GridItem>
+            );
+          })}
+        </>
+      )}
 
       <GridItem>
         <ActionList>
@@ -500,7 +375,7 @@ const NameValueEditorInner: FC<NameValueEditorProps> = ({
                   type="button"
                   variant="link"
                 >
-                  {addString ? addString : t('public~Add more')}
+                  {addString ? addString : t('Add more')}
                 </Button>
               </ActionListItem>
               {addConfigMapSecret && (
@@ -517,7 +392,7 @@ const NameValueEditorInner: FC<NameValueEditorProps> = ({
                     type="button"
                     variant="link"
                   >
-                    {t('public~Add from ConfigMap or Secret')}
+                    {t('Add from ConfigMap or Secret')}
                   </Button>
                 </ActionListItem>
               )}
@@ -528,11 +403,9 @@ const NameValueEditorInner: FC<NameValueEditorProps> = ({
     </Grid>
   );
 };
-
-export const NameValueEditor: FC<NameValueEditorProps> = withDragDropContext(NameValueEditorInner);
 NameValueEditor.displayName = 'Name Value Editor';
 
-const EnvFromEditorInner: FC<EnvFromEditorProps> = ({
+export const EnvFromEditor: FC<EnvFromEditorProps> = ({
   nameValuePairs,
   updateParentData,
   nameValueId = 0,
@@ -545,7 +418,7 @@ const EnvFromEditorInner: FC<EnvFromEditorProps> = ({
   addButtonDisabled = false,
   addButtonLabel,
 }) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation('public');
 
   const handleAppend = () => {
     const configMapSecretRef = { name: '', key: '' };
@@ -563,68 +436,104 @@ const EnvFromEditorInner: FC<EnvFromEditorProps> = ({
   const handleRemove = (i: number) => {
     const pairs = _.cloneDeep(nameValuePairs);
     pairs.splice(i, 1);
+    pairs.forEach((values, idx) => (values[EnvFromPair.Index] = idx));
     const configMapSecretRef = { name: '', key: '' };
 
     updateParentData(
-      { nameValuePairs: pairs.length ? pairs : [['', { configMapSecretRef }]] },
+      { nameValuePairs: pairs.length ? pairs : [['', { configMapSecretRef }, 0]] },
       nameValueId,
       EnvType.ENV_FROM,
     );
   };
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>, i: number, type: EnvFromPair) => {
+  const handleChange = (value: string, i: number, type: EnvFromPair) => {
     const pairs = _.cloneDeep(nameValuePairs);
-    pairs[i][type === EnvFromPair.Prefix ? EnvFromPair.Prefix : EnvFromPair.Resource] =
-      e.target.value;
+    pairs[i][type === EnvFromPair.Prefix ? EnvFromPair.Prefix : EnvFromPair.Resource] = value;
     updateParentData({ nameValuePairs: pairs }, nameValueId, EnvType.ENV_FROM);
   };
 
-  const handleMove = (dragIndex: number, hoverIndex: number) => {
-    const pairs = _.cloneDeep(nameValuePairs);
-    const movedPair = pairs[dragIndex];
-    pairs[dragIndex] = pairs[hoverIndex];
-    pairs[hoverIndex] = movedPair;
-    updateParentData({ nameValuePairs: pairs }, nameValueId, EnvType.ENV_FROM);
-  };
+  const handleDrop = useCallback<DragDropSortProps['onDrop']>(
+    (_event, newItems) => {
+      const pairById = new Map(nameValuePairs.map((p) => [`pair-${p[EnvFromPair.Index]}`, p]));
+      const newPairs = newItems.map((item) => pairById.get(item.id as string)!);
+      updateParentData({ nameValuePairs: newPairs }, nameValueId, EnvType.ENV_FROM);
+    },
+    [nameValuePairs, nameValueId, updateParentData],
+  );
 
-  const pairElems = nameValuePairs.map((pair, i) => {
-    const key = _.get(pair, [EnvFromPair.Index], i) as Key;
+  const useSorting = !readOnly && nameValuePairs.length > 1;
 
-    return (
-      <EnvFromPairElement
-        onChange={handleChange}
-        index={i}
-        valueString=""
-        readOnly={readOnly}
-        pair={pair}
-        key={key}
-        onRemove={handleRemove}
-        onMove={handleMove}
-        rowSourceId={nameValueId}
-        configMaps={configMaps}
-        secrets={secrets}
-        serviceAccounts={serviceAccounts}
-      />
-    );
-  });
+  const makeEnvFromElement = (pair: PairValue[], i: number) => (
+    <EnvFromPairElement
+      onChange={handleChange}
+      index={i}
+      valueString=""
+      readOnly={readOnly}
+      pair={pair}
+      onRemove={handleRemove}
+      configMaps={configMaps}
+      secrets={secrets}
+      serviceAccounts={serviceAccounts}
+    />
+  );
 
   return (
     <Grid hasGutter>
-      {!readOnly && <GridItem span={1} />}
-      <GridItem span={5} className="pf-v6-u-text-color-subtle">
-        {firstTitle || t('public~ConfigMap/Secret')}
-      </GridItem>
-      <GridItem span={5} className="pf-v6-u-text-color-subtle">
-        {secondTitle || t('public~Prefix (optional)')}
-      </GridItem>
-      <GridItem span={1} />
+      {useSorting ? (
+        <>
+          <GridItem span={12}>
+            <div className="pf-v6-u-display-flex">
+              <div className="pairs-list__drag-spacer" />
+              <Grid hasGutter className="pf-v6-u-flex-grow-1">
+                <GridItem span={5} className="pf-v6-u-text-color-subtle">
+                  {firstTitle || t('ConfigMap/Secret')}
+                </GridItem>
+                <GridItem span={5} className="pf-v6-u-text-color-subtle">
+                  {secondTitle || t('Prefix (optional)')}
+                </GridItem>
+                <GridItem span={1} />
+              </Grid>
+            </div>
+          </GridItem>
+          <GridItem span={12}>
+            <DragDropSort
+              items={nameValuePairs.map(
+                (pair, i): DraggableObject => ({
+                  id: `pair-${(pair[EnvFromPair.Index] as number) ?? i}`,
+                  props: { className: 'pf-v6-u-display-flex pf-v6-u-align-items-center' },
+                  content: makeEnvFromElement(pair, i),
+                }),
+              )}
+              onDrop={handleDrop}
+            >
+              <div className="pairs-list__drag-container" />
+            </DragDropSort>
+          </GridItem>
+        </>
+      ) : (
+        <>
+          <GridItem span={5} className="pf-v6-u-text-color-subtle">
+            {firstTitle || t('ConfigMap/Secret')}
+          </GridItem>
+          <GridItem span={5} className="pf-v6-u-text-color-subtle">
+            {secondTitle || t('Prefix (optional)')}
+          </GridItem>
+          <GridItem span={1} />
+          {nameValuePairs.map((pair, i) => {
+            const key = (pair[EnvFromPair.Index] as Key) ?? i;
+            return (
+              <GridItem span={12} key={key}>
+                {makeEnvFromElement(pair, i)}
+              </GridItem>
+            );
+          })}
+        </>
+      )}
 
-      {pairElems}
-
-      <GridItem>
-        <ActionList>
-          <ActionListGroup>
-            {!readOnly && (
+      {!readOnly && (
+        <GridItem>
+          <ActionList>
+            <ActionListGroup>
               <Button
                 icon={<PlusCircleIcon />}
                 className="pf-m-link--align-left"
@@ -633,14 +542,12 @@ const EnvFromEditorInner: FC<EnvFromEditorProps> = ({
                 variant="link"
                 isDisabled={addButtonDisabled}
               >
-                {addButtonLabel || t('public~Add all from ConfigMap or Secret')}
+                {addButtonLabel || t('Add all from ConfigMap or Secret')}
               </Button>
-            )}
-          </ActionListGroup>
-        </ActionList>
-      </GridItem>
+            </ActionListGroup>
+          </ActionList>
+        </GridItem>
+      )}
     </Grid>
   );
 };
-
-export const EnvFromEditor: FC<EnvFromEditorProps> = withDragDropContext(EnvFromEditorInner);
