@@ -1006,11 +1006,6 @@ export type UserInfo = {
   extra?: object;
 };
 
-export type UserKind = {
-  fullName?: string;
-  identities: string[];
-} & K8sResourceCommon;
-
 export type GroupKind = {
   users: string[];
 } & K8sResourceCommon;
