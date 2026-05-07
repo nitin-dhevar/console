@@ -103,7 +103,7 @@ const ContainerSourceSection: FC<ContainerSourceSectionProps> = ({ title, fullWi
           readOnly={false}
           allowSorting={false}
           updateParentData={handleNameValuePairs}
-          addLabel={t('knative-plugin~Add more')}
+          addString={t('knative-plugin~Add more')}
         />
 
         <FormHelperText>

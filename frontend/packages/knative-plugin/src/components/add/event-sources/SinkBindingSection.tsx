@@ -108,7 +108,7 @@ const SinkBindingSection: FC<SinkBindingSectionProps> = ({ title, fullWidth }) =
             nameValuePairs={nameValue}
             valueString={t('knative-plugin~Value')}
             nameString={t('knative-plugin~Name')}
-            addLabel={t('knative-plugin~Add values')}
+            addString={t('knative-plugin~Add values')}
             readOnly={false}
             allowSorting={false}
             updateParentData={handleNameValuePairs}

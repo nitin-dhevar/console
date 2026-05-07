@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FC } from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { NameValueEditor } from '../../../components/utils/name-value-editor';
+import { NameValueEditor, PairValue } from '../../../components/utils/name-value-editor';
 
 jest.mock('react-i18next');
 
@@ -11,7 +11,7 @@ const NameValueEditorHarness: FC<{
   initialPairs: Array<[string, string, number]>;
   onUpdate: jest.Mock;
 }> = ({ initialPairs, onUpdate }) => {
-  const [pairs, setPairs] = useState(initialPairs);
+  const [pairs, setPairs] = useState<PairValue[][]>(initialPairs);
   return (
     <NameValueEditor
       nameValuePairs={pairs}
@@ -185,7 +185,7 @@ describe('NameValueEditor', () => {
       expect(screen.getByDisplayValue('name')).toBeDisabled();
       expect(screen.getByDisplayValue('value')).toBeDisabled();
       expect(screen.queryByRole('button', { name: /add more/i })).not.toBeInTheDocument();
-      expect(screen.queryByLabelText('Drag to reorder')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Drag button')).not.toBeInTheDocument();
     });
   });
 
@@ -202,7 +202,7 @@ describe('NameValueEditor', () => {
           allowSorting={true}
         />,
       );
-      expect(screen.getAllByLabelText('Drag to reorder')).toHaveLength(2);
+      expect(screen.getAllByLabelText('Drag button')).toHaveLength(2);
     });
 
     it('hides reorder button when allowSorting is false', () => {
@@ -213,10 +213,10 @@ describe('NameValueEditor', () => {
           allowSorting={false}
         />,
       );
-      expect(screen.queryByLabelText('Drag to reorder')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Drag button')).not.toBeInTheDocument();
     });
 
-    it('disables reorder button when only one pair exists', () => {
+    it('does not show reorder button when only one pair exists', () => {
       render(
         <NameValueEditor
           nameValuePairs={[['name', 'value', 0]]}
@@ -225,9 +225,7 @@ describe('NameValueEditor', () => {
           allowSorting={true}
         />,
       );
-      const reorderButton = screen.getByLabelText('Drag to reorder');
-      expect(reorderButton).toBeInTheDocument();
-      expect(reorderButton).toBeDisabled();
+      expect(screen.queryByLabelText('Drag button')).not.toBeInTheDocument();
     });
   });
 
