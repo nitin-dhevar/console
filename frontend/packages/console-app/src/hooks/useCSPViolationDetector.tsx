@@ -67,11 +67,6 @@ export const newPluginCSPViolationEvent = (
  * Report CSP violation event for Cypress test purposes.
  */
 const reportCSPViolationToCypress = (event: SecurityPolicyViolationEvent) => {
-  // OCPBUGS-77931: Address CSP violations detected when running Cypress tests
-  if (event.effectiveDirective === 'img-src') {
-    return; // Catalog view links to arbitrary image URLs
-  }
-
   // Import from Git e2e tests make direct browser requests to api.github.com
   // which violates connect-src CSP. This is expected since git hosting can be
   // on any arbitrary hostname (e.g. Gitea) and cannot be allowlisted in CSP.
