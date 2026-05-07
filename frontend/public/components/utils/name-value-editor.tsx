@@ -19,8 +19,7 @@ import { useTranslation } from 'react-i18next';
 
 import { NameValueEditorPair, EnvFromPair, EnvType } from './types';
 import { ValueFromPair } from './value-from-pair';
-
-export type PairValue = string | number | Record<string, unknown>;
+import type { ValueFromPairProps, PairValue, RefChangeValue } from './value-from-pair';
 
 interface NameValueEditorProps {
   nameString?: string;
@@ -56,13 +55,15 @@ interface EnvFromEditorProps {
   addButtonLabel?: string;
 }
 
+type PairChangeValue = string | RefChangeValue;
+
 interface PairElementProps {
   nameString: string;
   valueString: string;
   readOnly: boolean;
   index: number;
   pair: PairValue[];
-  onChange: (value: string, index: number, type: NameValueEditorPair) => void;
+  onChange: (value: PairChangeValue, index: number, type: NameValueEditorPair) => void;
   onRemove: (index: number) => void;
   configMaps?: Record<string, unknown>;
   secrets?: Record<string, unknown>;
@@ -76,7 +77,7 @@ interface EnvFromPairElementProps {
   readOnly: boolean;
   index: number;
   pair: PairValue[];
-  onChange: (value: string, index: number, type: EnvFromPair) => void;
+  onChange: (value: PairChangeValue, index: number, type: EnvFromPair) => void;
   onRemove: (index: number) => void;
   configMaps?: Record<string, unknown>;
   secrets?: Record<string, unknown>;
@@ -104,7 +105,7 @@ const PairElement: FC<PairElementProps> = ({
     onChange(value, index, NameValueEditorPair.Name);
   const handleChangeValue: TextInputProps['onChange'] = (_event, value) =>
     onChange(value, index, NameValueEditorPair.Value);
-  const handleChangeValueFromPair = (e: { target: { value: string } }) =>
+  const handleChangeValueFromPair: ValueFromPairProps['onChange'] = (e) =>
     onChange(e.target.value, index, NameValueEditorPair.Value);
 
   return (
@@ -179,7 +180,7 @@ const EnvFromPairElement: FC<EnvFromPairElementProps> = ({
   const handleRemove = () => onRemove(index);
   const handleChangePrefix: TextInputProps['onChange'] = (_event, value) =>
     onChange(value, index, EnvFromPair.Prefix);
-  const handleChangeResource = (e: { target: { value: string } }) =>
+  const handleChangeResource: ValueFromPairProps['onChange'] = (e) =>
     onChange(e.target.value, index, EnvFromPair.Resource);
 
   return (
@@ -273,7 +274,7 @@ export const NameValueEditor: FC<NameValueEditorProps> = ({
     }
   };
 
-  const handleChange = (value: string, i: number, type: NameValueEditorPair) => {
+  const handleChange = (value: PairChangeValue, i: number, type: NameValueEditorPair) => {
     const pairs = _.cloneDeep(nameValuePairs);
     pairs[i][
       type === NameValueEditorPair.Name ? NameValueEditorPair.Name : NameValueEditorPair.Value
@@ -446,7 +447,7 @@ export const EnvFromEditor: FC<EnvFromEditorProps> = ({
     );
   };
 
-  const handleChange = (value: string, i: number, type: EnvFromPair) => {
+  const handleChange = (value: PairChangeValue, i: number, type: EnvFromPair) => {
     const pairs = _.cloneDeep(nameValuePairs);
     pairs[i][type === EnvFromPair.Prefix ? EnvFromPair.Prefix : EnvFromPair.Resource] = value;
     updateParentData({ nameValuePairs: pairs }, nameValueId, EnvType.ENV_FROM);
