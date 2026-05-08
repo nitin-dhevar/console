@@ -15,11 +15,10 @@ FROM registry.ci.openshift.org/ocp/builder:rhel-9-base-nodejs-openshift-4.22 AS 
 ADD . .
 USER 0
 
-WORKDIR frontend
-ENV CYPRESS_INSTALL_BINARY=0
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+    CYPRESS_INSTALL_BINARY=0
 
-RUN node .yarn/releases/yarn-4.12.0.cjs install --immutable && \
-    node .yarn/releases/yarn-4.12.0.cjs build
+RUN container-entrypoint ./build-frontend.sh
 
 ##################################################
 #
