@@ -5,10 +5,11 @@ import type {
   ReactNodeArray,
   SetStateAction,
   Dispatch,
+  ElementType,
 } from 'react';
 import type { QuickStartContextValues } from '@patternfly/quickstarts';
 import type { CodeEditorProps as PfCodeEditorProps } from '@patternfly/react-code-editor';
-import type { ButtonProps } from '@patternfly/react-core';
+import type { AlertVariant, ButtonProps } from '@patternfly/react-core';
 import type {
   ICell,
   OnSelect,
@@ -777,6 +778,52 @@ export type UseActivePerspective = () => [
   PerspectiveType,
   (perspective: string, next?: string) => void,
 ];
+
+export type ToastOptions = {
+  /** Optional ID identifying this toast. If not provided, one will be generated. */
+  id?: string;
+  /** The toast title. */
+  title: string;
+  /** The toast variant, one of: success, danger, warning, info, default */
+  variant: AlertVariant;
+  /** The toast content. */
+  content: ReactNode;
+  /** Optional actions to display in the toast. */
+  actions?: {
+    /** The action label. */
+    label: string;
+    /** The action callback. */
+    callback: () => void;
+    /** If `true`, executing this action will dismiss the toast. */
+    dismiss?: boolean;
+    /** Sets the base component to render. defaults to button */
+    component?: ElementType<any> | ComponentType<any>;
+    /** The data test id */
+    dataTest?: string;
+  }[];
+  /** The data test id */
+  dataTest?: string;
+  /** If `true`, displays a close button. */
+  dismissible?: boolean;
+  /**
+   * If set to true, the time out is 8000 milliseconds.
+   * If a number is provided, alert will be dismissed after that amount of time in milliseconds.
+   */
+  timeout?: number | boolean;
+  /** Callback when the toast is removed. */
+  onRemove?: (id: string) => void;
+  /** Callback to run when toast is dismissed with close button */
+  onClose?: () => void;
+};
+
+export type ToastContextValues = {
+  /** Add a toast alert. Returns the toast ID. */
+  addToast: (options: ToastOptions) => string;
+  /** Remove a toast alert. */
+  removeToast: (id: string) => void;
+};
+
+export type UseToast = () => ToastContextValues;
 
 export type QueryParams = {
   watch?: string;

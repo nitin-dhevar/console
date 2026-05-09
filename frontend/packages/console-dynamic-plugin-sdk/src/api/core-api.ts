@@ -39,6 +39,7 @@ import {
   UseResolvedExtensions,
   UseUserPreference,
   VirtualizedTableFC,
+  UseToast
 } from '../extensions/console-types';
 import { StatusPopupSectionProps, StatusPopupItemProps } from '../extensions/dashboard-types';
 
@@ -980,5 +981,25 @@ export const useQuickStartContext: UseQuickStartContext = require('@console/shar
  */
 export const useActivePerspective: UseActivePerspective = require('@console/dynamic-plugin-sdk/src/perspective/useActivePerspective')
   .default;
+
+/**
+ * Hook that provides toast functionality for displaying alerts.
+ * @returns A toast context object with an `addToast` function for adding a toast to the screen and a `removeToast` function for removing a toast from the screen.
+ * @example
+ * ```tsx
+ * const Component: React.FC = (props) => {
+ *    const { addToast } = useToast();
+ *    const handleClick = () => {
+ *      addToast({
+ *        title: 'Success',
+ *        variant: 'success',
+ *        content: 'Operation completed successfully.'
+ *      });
+ *    };
+ *    return <button onClick={handleClick}>Show Toast</button>;
+ * };
+ * ```
+ */
+export const useToast: UseToast = require('@console/shared/src/components/toast/useToast').default;
 
 export * from '../perspective/perspective-context';

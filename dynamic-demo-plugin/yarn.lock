@@ -214,8 +214,8 @@ __metadata:
   linkType: hard
 
 "@openshift/dynamic-plugin-sdk@npm:^8.0.0":
-  version: 8.0.0
-  resolution: "@openshift/dynamic-plugin-sdk@npm:8.0.0"
+  version: 8.2.0
+  resolution: "@openshift/dynamic-plugin-sdk@npm:8.2.0"
   dependencies:
     lodash: "npm:^4.17.23"
     semver: "npm:^7.7.3"
@@ -223,7 +223,7 @@ __metadata:
     yup: "npm:^1.7.1"
   peerDependencies:
     react: ^18 || ^19
-  checksum: 10c0/a5c7bc5198f75fcc9fad242ffb51e264e860218e7035b87204d429cc47fa566208cc3474af739d3e05a2adc1bfe41ae9e09d3afd93a5b8c0d29f1814ee9f3127
+  checksum: 10c0/a9e3e1a145014a13310acd4630c7a2b7a7545b6c089e1d41e99ceaec061c1a270051d44bd26ddd09ec61bb02533ecfab55663cedb41a20d63acf824067eb63ab
   languageName: node
   linkType: hard
 

@@ -1,7 +1,10 @@
 import type { FC, ReactNode } from 'react';
 import { useState, useCallback, useMemo } from 'react';
 import { Alert, AlertGroup, AlertActionCloseButton, AlertActionLink } from '@patternfly/react-core';
-import type { ToastOptions, ToastContextType } from './ToastContext';
+import type {
+  ToastOptions,
+  ToastContextValues,
+} from '@console/dynamic-plugin-sdk/src/extensions/console-types';
 import ToastContext from './ToastContext';
 
 interface ToastProviderProps {
@@ -46,7 +49,7 @@ const ToastProvider: FC<ToastProviderProps> = ({ children }) => {
     };
   }, []);
 
-  const controller: ToastContextType = useMemo<ToastContextType>(
+  const controller = useMemo<ToastContextValues>(
     () => ({
       addToast,
       removeToast,
