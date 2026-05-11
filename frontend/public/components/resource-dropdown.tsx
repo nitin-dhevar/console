@@ -28,7 +28,7 @@ import {
 import { TimesIcon } from '@patternfly/react-icons';
 
 const RECENT_SEARCH_ITEMS = 5;
-const MAX_VISIBLE_ITEMS = 100;
+const MAX_VISIBLE_ITEMS = 250;
 
 // Blocklist known duplicate resources.
 const blocklistGroups = ImmutableSet([
