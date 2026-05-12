@@ -27,7 +27,7 @@ const packages = [
 ];
 
 // Packages that also have developer-persona tests
-const devPackages = ['dev-console', 'shipwright', 'topology'];
+const devPackages = ['smoke', 'dev-console', 'shipwright', 'topology'];
 
 const chromeArgs = [
   '--ignore-certificate-errors',
@@ -46,8 +46,6 @@ const chromeArgs = [
 ];
 
 export default defineConfig({
-  globalSetup: path.resolve(__dirname, 'e2e', 'global.setup.ts'),
-  globalTeardown: path.resolve(__dirname, 'e2e', 'global.teardown.ts'),
   testDir: './e2e/tests',
   testMatch: '**/*.spec.ts',
   forbidOnly: isCI,
@@ -82,10 +80,49 @@ export default defineConfig({
   workers: process.env.WORKERS ? parseInt(process.env.WORKERS, 10) : isCI ? 1 : undefined,
 
   projects: [
+    {
+      name: 'cluster-setup',
+      testDir: path.resolve(__dirname, 'e2e', 'setup'),
+      testMatch: 'cluster.setup.ts',
+      teardown: 'teardown',
+    },
+    {
+      name: 'admin-auth',
+      testDir: path.resolve(__dirname, 'e2e', 'setup'),
+      testMatch: 'admin-auth.setup.ts',
+      dependencies: ['cluster-setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        ignoreHTTPSErrors: true,
+        launchOptions: {
+          args: chromeArgs,
+        },
+      },
+    },
+    {
+      name: 'developer-auth',
+      testDir: path.resolve(__dirname, 'e2e', 'setup'),
+      testMatch: 'developer-auth.setup.ts',
+      dependencies: ['cluster-setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        ignoreHTTPSErrors: true,
+        launchOptions: {
+          args: chromeArgs,
+        },
+      },
+    },
+    {
+      name: 'teardown',
+      testDir: path.resolve(__dirname, 'e2e', 'setup'),
+      testMatch: 'teardown.setup.ts',
+    },
+
     ...packages.map((pkg) => ({
       name: pkg,
       testDir: path.resolve(__dirname, 'e2e', 'tests', pkg),
       testIgnore: '**/developer/**',
+      dependencies: ['admin-auth'],
       use: {
         ...devices['Desktop Chrome'],
         storageState: adminStorageState,
@@ -95,6 +132,7 @@ export default defineConfig({
       ? devPackages.map((pkg) => ({
           name: `${pkg}-developer`,
           testDir: path.resolve(__dirname, 'e2e', 'tests', pkg, 'developer'),
+          dependencies: ['developer-auth'],
           use: {
             ...devices['Desktop Chrome'],
             storageState: developerStorageState,
