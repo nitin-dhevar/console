@@ -75,6 +75,9 @@ fi
 
 if [ "$RUN_CREATE_USER" = true ]; then
   "${REPO_ROOT}/contrib/create-user.sh"
+  export BRIDGE_HTPASSWD_IDP="${BRIDGE_HTPASSWD_IDP:-test}"
+  export BRIDGE_HTPASSWD_USERNAME="${BRIDGE_HTPASSWD_USERNAME:-test}"
+  export BRIDGE_HTPASSWD_PASSWORD="${BRIDGE_HTPASSWD_PASSWORD:-test}"
 fi
 
 FRONTEND_ABS="$(pwd)"
@@ -84,5 +87,7 @@ if [ ! -f "$playwright_bin" ]; then
   echo "       yarn add -D @playwright/test && yarn playwright install" >&2
   exit 1
 fi
+
+export CI=true
 
 exec "$playwright_bin" test "$@"
