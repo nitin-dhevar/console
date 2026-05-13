@@ -1,8 +1,8 @@
+import type { ReactNode } from 'react';
 import { useRef, useState, useCallback, useEffect } from 'react';
 import * as _ from 'lodash';
 import i18n from '@console/internal/i18n';
 import { useTranslation } from 'react-i18next';
-import * as PropTypes from 'prop-types';
 import {
   FilterSidePanel,
   FilterSidePanelCategory,
@@ -21,7 +21,9 @@ import {
   Flex,
   FlexItem,
 } from '@patternfly/react-core';
-import { useDebounceCallback, getURLWithParams, VirtualizedGrid } from '@console/shared';
+import { VirtualizedGrid } from '@console/shared';
+import { useDebounceCallback } from '@console/shared/src/hooks/useDebounceCallback';
+import { getURLWithParams } from '@console/shared/src/components/catalog/utils/catalog-utils';
 import { Link, useSearchParams } from 'react-router';
 import { isModifiedEvent } from '@console/shared/src/utils/utils';
 import PaneBody from '@console/shared/src/components/layout/PaneBody';
@@ -38,15 +40,97 @@ import { isModalOpen } from '../modals';
 export const FilterTypes = {
   category: 'category',
   keyword: 'keyword',
+} as const;
+
+type FilterItem = {
+  label: string;
+  value: string;
+  active: boolean;
+  synonyms?: string[];
 };
 
-const filterSubcategories = (category, item) => {
+type KeywordFilter = {
+  value: string;
+  active: boolean;
+};
+
+type ActiveFilters = {
+  keyword: KeywordFilter;
+  [groupName: string]: Record<string, FilterItem> | KeywordFilter;
+};
+
+type TileItem = Record<string, unknown>;
+
+type KeywordCompareResult = {
+  matches: boolean;
+  score: number;
+  item: TileItem;
+};
+
+type Subcategory = {
+  id: string;
+  label: string;
+  field?: string;
+  values?: string[];
+  items?: TileItem[];
+  numItems?: number;
+  subcategories?: Record<string, Subcategory>;
+};
+
+type Category = {
+  id: string;
+  label: string;
+  field?: string;
+  values?: string[];
+  items?: TileItem[];
+  numItems?: number;
+  subcategories?: Record<string, Subcategory>;
+};
+
+type Categories = Record<string, Category>;
+
+type FilterCounts = Record<string, Record<string, number>>;
+
+type GroupByTypes = Record<string, string>;
+
+type KeywordCompareFunction = {
+  (filterString: string, item: TileItem): boolean | KeywordCompareResult;
+  useScoring?: boolean;
+};
+
+type ItemsSorterFunction = {
+  (items: TileItem[], searchTerm?: string): TileItem[];
+  name?: string;
+};
+
+type TileViewPageProps = {
+  items: TileItem[] | null;
+  itemsSorter: ItemsSorterFunction;
+  getAvailableCategories: (items: TileItem[]) => Record<string, Category>;
+  getAvailableFilters?: (
+    filters: ActiveFilters,
+    items: TileItem[],
+    filterGroups: string[],
+  ) => ActiveFilters;
+  filterGroups: string[];
+  filterGroupNameMap?: Record<string, string>;
+  renderFilterGroup?:
+    | ((filterGroup: Record<string, FilterItem>, groupName: string) => ReactNode)
+    | null;
+  keywordCompare: KeywordCompareFunction;
+  renderTile: (item: TileItem) => ReactNode;
+  emptyStateTitle?: string;
+  emptyStateInfo?: string;
+  groupByTypes?: GroupByTypes;
+};
+
+const filterSubcategories = (category: Subcategory, item: TileItem): Subcategory[] => {
   if (!category.subcategories) {
     if (!category.values) {
       return [];
     }
 
-    let values = _.get(item, category.field);
+    let values = _.get(item, category.field) as Subcategory['field'] | Subcategory['values'];
     if (!Array.isArray(values)) {
       values = [values];
     }
@@ -59,9 +143,9 @@ const filterSubcategories = (category, item) => {
     return [];
   }
 
-  const matchedSubcategories = [];
+  const matchedSubcategories: Subcategory[] = [];
   _.forOwn(category.subcategories, (subCategory) => {
-    let values = _.get(item, category.field);
+    let values = _.get(item, category.field) as Subcategory['field'] | Subcategory['values'];
 
     if (!Array.isArray(values)) {
       values = [values];
@@ -79,7 +163,7 @@ const filterSubcategories = (category, item) => {
 };
 
 // categorize item under sub and main categories
-const addItem = (item, category, subcategory = null) => {
+const addItem = (item: TileItem, category: Category, subcategory: Subcategory | null = null) => {
   // Add the item to the category
   if (!category.items) {
     category.items = [item];
@@ -97,10 +181,7 @@ const addItem = (item, category, subcategory = null) => {
   }
 };
 
-// Removed isCategoryEmpty and pruneCategoriesWithNoItems functions - no longer needed since we preserve
-// all categories for navigation purposes, even if they have 0 items
-
-const processSubCategories = (category, itemsSorter) => {
+const processSubCategories = (category: Category, itemsSorter: ItemsSorterFunction) => {
   if (!category || !category.subcategories) {
     return;
   }
@@ -130,7 +211,7 @@ const processSubCategories = (category, itemsSorter) => {
 };
 
 // calculate numItems per Category and subcategories, sort items
-const processCategories = (categories, itemsSorter) => {
+const processCategories = (categories: Categories, itemsSorter: ItemsSorterFunction) => {
   if (!categories || !itemsSorter) {
     return;
   }
@@ -144,7 +225,7 @@ const processCategories = (categories, itemsSorter) => {
   });
 };
 
-const categorize = (items, categories) => {
+const categorize = (items: TileItem[], categories: Categories) => {
   // Categorize each item
   _.each(items, (item) => {
     let itemCategorized = false;
@@ -181,11 +262,15 @@ const categorize = (items, categories) => {
  * under 'Other' main category.
  * (exported for test purposes)
  */
-export const categorizeItems = (items, itemsSorter, initCategories) => {
+export const categorizeItems = (
+  items: TileItem[],
+  itemsSorter: ItemsSorterFunction,
+  initCategories: Record<string, Category>,
+): Categories => {
   const allCategory = { id: 'all', label: i18n.t('public~All Items') };
   const otherCategory = { id: 'other', label: i18n.t('public~Other') };
 
-  const categories = {
+  const categories: Categories = {
     all: allCategory,
     ..._.cloneDeep(initCategories),
     other: otherCategory,
@@ -200,7 +285,7 @@ export const categorizeItems = (items, itemsSorter, initCategories) => {
   return categories;
 };
 
-const clearItemsFromCategories = (categories) => {
+const clearItemsFromCategories = (categories: Categories) => {
   if (!categories) {
     return;
   }
@@ -216,7 +301,11 @@ const clearItemsFromCategories = (categories) => {
   });
 };
 
-const filterByKeyword = (items, filters, compFunction) => {
+const filterByKeyword = (
+  items: TileItem[],
+  filters: ActiveFilters,
+  compFunction: KeywordCompareFunction,
+) => {
   const { keyword } = filters;
   if (!keyword || !keyword.active) {
     return items;
@@ -227,7 +316,7 @@ const filterByKeyword = (items, filters, compFunction) => {
   if (compFunction.useScoring && window.location.pathname.includes('operatorhub')) {
     return items
       .map((item) => {
-        const result = compFunction(filterString, item);
+        const result = compFunction(filterString, item) as KeywordCompareResult;
         return result.matches ? result.item : null;
       })
       .filter((item) => item !== null);
@@ -236,20 +325,20 @@ const filterByKeyword = (items, filters, compFunction) => {
   return _.filter(items, (item) => compFunction(filterString, item));
 };
 
-const filterByGroup = (items, filters) => {
-  // Filter items by each filter group
+// Filter items by each filter group
+const filterByGroup = (items: TileItem[], filters: ActiveFilters) => {
   return _.reduce(
     filters,
-    (filtered, group, key) => {
+    (filtered: Record<string, TileItem[]>, group, key) => {
       if (key === FilterTypes.keyword) {
         return filtered;
       }
       // Only apply active filters
-      const activeFilters = _.filter(group, 'active');
+      const activeFilters = _.filter(group as Record<string, FilterItem>, 'active');
       if (activeFilters.length) {
         const values = _.reduce(
           activeFilters,
-          (filterValues, filter) => {
+          (filterValues: string[], filter) => {
             filterValues.push(filter.value, ..._.get(filter, 'synonyms', []));
             return filterValues;
           },
@@ -257,10 +346,11 @@ const filterByGroup = (items, filters) => {
         );
 
         filtered[key] = _.filter(items, (item) => {
-          if (Array.isArray(item[key])) {
-            return item[key].some((f) => values.includes(f));
+          const itemValue = item[key];
+          if (Array.isArray(itemValue)) {
+            return itemValue.some((f: string) => values.includes(f));
           }
-          return values.includes(item[key]);
+          return values.includes(itemValue as string);
         });
       }
 
@@ -270,7 +360,11 @@ const filterByGroup = (items, filters) => {
   );
 };
 
-const filterItems = (items, filters, keywordCompare) => {
+const filterItems = (
+  items: TileItem[],
+  filters: ActiveFilters,
+  keywordCompare: KeywordCompareFunction,
+) => {
   if (_.isEmpty(filters)) {
     return items;
   }
@@ -292,7 +386,13 @@ const filterItems = (items, filters, keywordCompare) => {
   );
 };
 
-const recategorizeItems = (items, itemsSorter, filters, keywordCompare, categories) => {
+const recategorizeItems = (
+  items: TileItem[],
+  itemsSorter: ItemsSorterFunction,
+  filters: ActiveFilters,
+  keywordCompare: KeywordCompareFunction,
+  categories: Categories,
+) => {
   const filteredItems = filterItems(items, filters, keywordCompare);
 
   const searchTerm = filters?.keyword?.active ? filters.keyword.value : '';
@@ -318,11 +418,11 @@ const recategorizeItems = (items, itemsSorter, filters, keywordCompare, categori
   return newCategories;
 };
 
-const isActiveTab = (activeId, category) => {
+const isActiveTab = (activeId: string, category: Category) => {
   return _.has(category.subcategories, activeId);
 };
 
-const hasActiveDescendant = (activeId, category) => {
+const hasActiveDescendant = (activeId: string, category: Category): boolean => {
   if (_.has(category.subcategories, activeId)) {
     return true;
   }
@@ -332,8 +432,8 @@ const hasActiveDescendant = (activeId, category) => {
   );
 };
 
-const findActiveCategory = (activeId, categories) => {
-  let activeCategory = null;
+const findActiveCategory = (activeId: string, categories: Categories): Category | null => {
+  let activeCategory: Category | null = null;
   _.forOwn(categories, (category) => {
     if (activeCategory) {
       return;
@@ -342,18 +442,22 @@ const findActiveCategory = (activeId, categories) => {
     if (category.id === activeId) {
       activeCategory = category;
     } else {
-      activeCategory = findActiveCategory(activeId, category.subcategories);
+      activeCategory = findActiveCategory(activeId, category.subcategories as Categories);
     }
   });
   return activeCategory;
 };
 
-const determineAvailableFilters = (initialFilters, items, filterGroups) => {
+const determineAvailableFilters = (
+  initialFilters: ActiveFilters,
+  items: TileItem[],
+  filterGroups: string[],
+) => {
   const filters = _.cloneDeep(initialFilters);
 
   _.each(filterGroups, (field) => {
     _.each(items, (item) => {
-      const value = item[field];
+      const value = item[field] as string;
       if (value) {
         _.set(filters, [field, value], {
           label: value,
@@ -367,7 +471,12 @@ const determineAvailableFilters = (initialFilters, items, filterGroups) => {
   return filters;
 };
 
-const getActiveFilters = (keywordFilter, groupFilters, activeFilters, categoryFilter = null) => {
+const getActiveFilters = (
+  keywordFilter: string | null,
+  groupFilters: Record<string, string[]>,
+  activeFilters: ActiveFilters,
+  categoryFilter: string | null = null,
+) => {
   activeFilters.keyword.value = keywordFilter || '';
   activeFilters.keyword.active = !!keywordFilter;
   if (categoryFilter) {
@@ -390,7 +499,12 @@ const getActiveFilters = (keywordFilter, groupFilters, activeFilters, categoryFi
   return activeFilters;
 };
 
-export const updateActiveFilters = (activeFilters, filterType, id, value) => {
+export const updateActiveFilters = (
+  activeFilters: ActiveFilters,
+  filterType: string,
+  id: string | null,
+  value: string | boolean,
+) => {
   if (filterType === FilterTypes.keyword) {
     _.set(activeFilters, 'keyword.value', value);
     _.set(activeFilters, 'keyword.active', !!value);
@@ -401,7 +515,7 @@ export const updateActiveFilters = (activeFilters, filterType, id, value) => {
   return activeFilters;
 };
 
-const clearActiveFilters = (activeFilters, filterGroups) => {
+const clearActiveFilters = (activeFilters: ActiveFilters, filterGroups: string[]) => {
   // Clear the keyword filter
   _.set(activeFilters, 'keyword.value', '');
   _.set(activeFilters, 'keyword.active', false);
@@ -416,29 +530,36 @@ const clearActiveFilters = (activeFilters, filterGroups) => {
   return activeFilters;
 };
 
+const defaultFilters: ActiveFilters = {
+  keyword: {
+    value: '',
+    active: false,
+  },
+};
+
 const getFilterGroupCounts = (
-  items,
-  itemsSorter,
-  filterGroups,
-  selectedCategoryId,
-  filters,
-  categories,
-  keywordCompare,
-) => {
+  items: TileItem[],
+  itemsSorter: ItemsSorterFunction,
+  filterGroups: string[],
+  selectedCategoryId: string,
+  filters: ActiveFilters,
+  categories: Categories,
+  keywordCompare: KeywordCompareFunction,
+): FilterCounts => {
   // Filter only by keyword
   const filteredItems = filterByKeyword(items, filters, keywordCompare);
 
   const categoriesForCounts = recategorizeItems(
     filteredItems,
     itemsSorter,
-    [],
+    defaultFilters,
     keywordCompare,
     categories,
   );
 
   const activeCategory = findActiveCategory(selectedCategoryId, categoriesForCounts);
   const activeItems = activeCategory ? activeCategory.items : [];
-  const newFilterCounts = {};
+  const newFilterCounts: FilterCounts = {};
 
   _.each(filterGroups, (filterGroup) => {
     _.each(_.keys(filters[filterGroup]), (key) => {
@@ -449,7 +570,7 @@ const getFilterGroupCounts = (
 
       const matchedItems = _.filter(activeItems, (item) => {
         if (Array.isArray(item[filterGroup])) {
-          return item[filterGroup].some((f) => filterValues.includes(f));
+          return item[filterGroup].some((f: string) => filterValues.includes(f));
         }
 
         return filterValues.includes(item[filterGroup]);
@@ -462,7 +583,11 @@ const getFilterGroupCounts = (
   return newFilterCounts;
 };
 
-const getActiveValuesFromURL = (availableFilters, filterGroups, groupByTypes) => {
+const getActiveValuesFromURL = (
+  availableFilters: ActiveFilters,
+  filterGroups: string[],
+  groupByTypes?: GroupByTypes,
+) => {
   const searchParams = new URLSearchParams(window.location.search);
   const categoryParam = searchParams.get(FilterTypes.category);
   const keywordFilter = searchParams.get(FilterTypes.keyword);
@@ -471,7 +596,7 @@ const getActiveValuesFromURL = (availableFilters, filterGroups, groupByTypes) =>
   if (groupByTypes) {
     groupBy = searchParams.get('groupBy') || groupByTypes.None;
   }
-  const groupFilters = {};
+  const groupFilters: Record<string, string[]> = {};
 
   _.each(filterGroups, (filterGroup) => {
     const groupFilterParam = searchParams.get(filterGroup);
@@ -497,10 +622,10 @@ const getActiveValuesFromURL = (availableFilters, filterGroups, groupByTypes) =>
   return { selectedCategoryId, activeFilters, groupBy };
 };
 
-export const getFilterSearchParam = (groupFilter) => {
+export const getFilterSearchParam = (groupFilter: Record<string, FilterItem>) => {
   const activeValues = _.reduce(
     _.keys(groupFilter),
-    (result, typeKey) => {
+    (result: string[], typeKey) => {
       return groupFilter[typeKey].active ? result.concat(typeKey) : result;
     },
     [],
@@ -509,42 +634,42 @@ export const getFilterSearchParam = (groupFilter) => {
   return _.isEmpty(activeValues) ? '' : JSON.stringify(activeValues);
 };
 
-const defaultFilters = {
-  keyword: {
-    value: '',
-    active: false,
-  },
+type UpdatedState = {
+  activeFilters: ActiveFilters;
+  selectedCategoryId: string;
+  categories: Categories;
+  filterCounts: FilterCounts;
 };
 
-export const TileViewPage = (props) => {
-  const {
-    items,
-    itemsSorter,
-    keywordCompare,
-    filterGroups,
-    filterGroupNameMap,
-    getAvailableCategories,
-    getAvailableFilters,
-    groupByTypes,
-    emptyStateTitle,
-    emptyStateInfo,
-    renderTile,
-  } = props;
-
+export const TileViewPage = ({
+  items,
+  itemsSorter,
+  keywordCompare,
+  filterGroups,
+  filterGroupNameMap = {},
+  getAvailableCategories,
+  getAvailableFilters = determineAvailableFilters,
+  groupByTypes,
+  emptyStateTitle = 'No Results Match the Filter Criteria',
+  emptyStateInfo = 'No items are being shown due to the filters being applied.',
+  renderTile,
+}: TileViewPageProps) => {
   const { t } = useTranslation();
   const [, setSearchParams] = useSearchParams();
-  const filterByKeywordInput = useRef();
-  const [prevProps, setPrevProps] = useState(props);
+  const filterByKeywordInput = useRef<HTMLInputElement>(null);
+  const [prevItems, setPrevItems] = useState(items);
 
-  const [categories, setCategories] = useState(
+  const [categories, setCategories] = useState(() =>
     categorizeItems(items, itemsSorter, getAvailableCategories(items)),
   );
   const [selectedCategoryId, setSelectedCategoryId] = useState('all');
-  const [activeFilters, setActiveFilters] = useState(defaultFilters);
-  const [filterCounts, setFilterCounts] = useState(null);
-  const [filterGroupsShowAll, setFilterGroupsShowAll] = useState({});
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>(() =>
+    _.cloneDeep(defaultFilters),
+  );
+  const [filterCounts, setFilterCounts] = useState<FilterCounts | null>(null);
+  const [filterGroupsShowAll, setFilterGroupsShowAll] = useState<Record<string, boolean>>({});
 
-  const updateURLParams = (paramName, value) => {
+  const updateURLParams = (paramName: string, value: string | string[]) => {
     const params = new URLSearchParams(window.location.search);
 
     if (value) {
@@ -565,76 +690,84 @@ export const TileViewPage = (props) => {
     setSearchParams(params);
   };
 
-  const getUpdatedState = useCallback((selectedCategories, categoryId, filters) => {
-    if (!items) {
-      return;
-    }
+  const getUpdatedState = useCallback(
+    (
+      selectedCategories: Categories,
+      categoryId: string,
+      filters: ActiveFilters,
+    ): UpdatedState | undefined => {
+      if (!items) {
+        return;
+      }
 
-    const newCategories = recategorizeItems(
-      items,
-      itemsSorter,
-      filters,
-      keywordCompare,
-      selectedCategories,
-    );
-
-    return {
-      activeFilters: filters,
-      selectedCategoryId: categoryId,
-      categories: newCategories,
-      filterCounts: getFilterGroupCounts(
+      const newCategories = recategorizeItems(
         items,
         itemsSorter,
-        filterGroups,
-        categoryId,
         filters,
-        newCategories,
         keywordCompare,
-      ),
-    };
+        selectedCategories,
+      );
+
+      return {
+        activeFilters: filters,
+        selectedCategoryId: categoryId,
+        categories: newCategories,
+        filterCounts: getFilterGroupCounts(
+          items,
+          itemsSorter,
+          filterGroups,
+          categoryId,
+          filters,
+          newCategories,
+          keywordCompare,
+        ),
+      };
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    [],
+  );
+
+  const applyState = (state: UpdatedState | undefined) => {
+    if (!state) {
+      return;
+    }
+    setCategories(state.categories);
+    setSelectedCategoryId(state.selectedCategoryId);
+    setActiveFilters(state.activeFilters);
+    setFilterCounts(state.filterCounts);
+  };
 
   const initState = () => {
     const availableFilters = getAvailableFilters(defaultFilters, items, filterGroups);
     const activeValues = getActiveValuesFromURL(availableFilters, filterGroups, groupByTypes);
 
-    const updatedState = getUpdatedState(
-      categories,
-      activeValues.selectedCategoryId,
-      activeValues.activeFilters,
+    applyState(
+      getUpdatedState(categories, activeValues.selectedCategoryId, activeValues.activeFilters),
     );
 
-    setCategories(updatedState.categories);
-    setSelectedCategoryId(updatedState.selectedCategoryId);
-    setActiveFilters(updatedState.activeFilters);
-    setFilterCounts(updatedState.filterCounts);
-
-    filterByKeywordInput.current.focus({ preventScroll: true });
+    filterByKeywordInput.current?.focus({ preventScroll: true });
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(initState, []);
 
   useEffect(() => {
-    if (!_.isEqual(items, prevProps?.items)) {
+    if (!_.isEqual(items, prevItems)) {
       const availableFilters = getAvailableFilters(defaultFilters, items, filterGroups);
       const availableCategories = getAvailableCategories(items);
       const newCategories = categorizeItems(items, itemsSorter, availableCategories);
 
       const newActiveFilters = _.reduce(
         availableFilters,
-        (updatedFilters, filterGroup, filterGroupName) => {
+        (updatedFilters: ActiveFilters, filterGroup, filterGroupName) => {
           if (filterGroupName === FilterTypes.keyword) {
             updatedFilters.keyword = activeFilters.keyword;
             return updatedFilters;
           }
-          _.each(filterGroup, (filterItem, filterItemName) => {
-            updatedFilters[filterGroupName][filterItemName].active = _.get(
-              activeFilters,
-              [filterGroupName, filterItemName, 'active'],
-              false,
-            );
+          _.each(filterGroup as Record<string, FilterItem>, (filterItem, filterItemName) => {
+            (updatedFilters[filterGroupName] as Record<string, FilterItem>)[
+              filterItemName
+            ].active = _.get(activeFilters, [filterGroupName, filterItemName, 'active'], false);
           });
 
           return updatedFilters;
@@ -642,17 +775,11 @@ export const TileViewPage = (props) => {
         availableFilters,
       );
 
-      const updatedState = getUpdatedState(newCategories, selectedCategoryId, newActiveFilters);
-
-      setCategories(updatedState.categories);
-      setSelectedCategoryId(updatedState.selectedCategoryId);
-      setActiveFilters(updatedState.activeFilters);
-      setFilterCounts(updatedState.filterCounts);
+      applyState(getUpdatedState(newCategories, selectedCategoryId, newActiveFilters));
     }
 
-    setPrevProps(props);
+    setPrevItems(items);
   }, [
-    props,
     filterGroups,
     getAvailableFilters,
     getUpdatedState,
@@ -662,7 +789,7 @@ export const TileViewPage = (props) => {
     getAvailableCategories,
     itemsSorter,
     selectedCategoryId,
-    prevProps?.items,
+    prevItems,
   ]);
 
   const clearFilters = () => {
@@ -670,61 +797,46 @@ export const TileViewPage = (props) => {
 
     const clearedFilters = clearActiveFilters(activeFilters, filterGroups);
 
-    const updatedState = getUpdatedState(categories, selectedCategoryId, clearedFilters);
-
-    setCategories(updatedState.categories);
-    setSelectedCategoryId(updatedState.selectedCategoryId);
-    setActiveFilters(updatedState.activeFilters);
-    setFilterCounts(updatedState.filterCounts);
+    applyState(getUpdatedState(categories, selectedCategoryId, clearedFilters));
 
     // Don't take focus if a modal was opened while the page was loading.
     if (!isModalOpen()) {
-      filterByKeywordInput.current.focus({ preventScroll: true });
+      filterByKeywordInput.current?.focus({ preventScroll: true });
     }
   };
 
-  const selectCategory = (categoryId) => {
+  const selectCategory = (categoryId: string) => {
     updateURLParams(FilterTypes.category, categoryId);
 
-    const updatedState = getUpdatedState(categories, categoryId, activeFilters);
-
-    setCategories(updatedState.categories);
-    setSelectedCategoryId(updatedState.selectedCategoryId);
-    setActiveFilters(updatedState.activeFilters);
-    setFilterCounts(updatedState.filterCounts);
+    applyState(getUpdatedState(categories, categoryId, activeFilters));
   };
 
-  const onFilterChange = (filterType, id, value) => {
+  const onFilterChange = (filterType: string, id: string | null, value: string | boolean) => {
     if (filterType === FilterTypes.keyword) {
       const update = _.debounce(() => updateURLParams(FilterTypes.keyword, `${value}`), 500);
       update();
     } else {
-      const groupFilter = _.cloneDeep(activeFilters[filterType]);
+      const groupFilter = _.cloneDeep(activeFilters[filterType]) as Record<string, FilterItem>;
       _.set(groupFilter, [id, 'active'], value);
       updateURLParams(filterType, getFilterSearchParam(groupFilter));
     }
 
     const updatedFilters = updateActiveFilters(activeFilters, filterType, id, value);
 
-    const updatedState = getUpdatedState(categories, selectedCategoryId, updatedFilters);
-
-    setCategories(updatedState.categories);
-    setSelectedCategoryId(updatedState.selectedCategoryId);
-    setActiveFilters(updatedState.activeFilters);
-    setFilterCounts(updatedState.filterCounts);
+    applyState(getUpdatedState(categories, selectedCategoryId, updatedFilters));
   };
 
-  const onKeywordChange = useDebounceCallback((value) => {
+  const onKeywordChange = useDebounceCallback((value: string) => {
     onFilterChange('keyword', null, value);
   });
 
-  const onShowAllToggle = (groupName) => {
+  const onShowAllToggle = (groupName: string) => {
     const updatedShow = _.clone(filterGroupsShowAll);
     _.set(updatedShow, groupName, !_.get(filterGroupsShowAll, groupName, false));
     setFilterGroupsShowAll(updatedShow);
   };
 
-  const renderTabs = (category, selected) => {
+  const renderTabs = (category: Category, selected: string): ReactNode => {
     const { id, label, subcategories } = category;
     const active = id === selected;
     const shown = id === 'all';
@@ -760,17 +872,17 @@ export const TileViewPage = (props) => {
     );
   };
 
-  const renderCategoryTabs = (selected) => {
+  const renderCategoryTabs = (selected: string) => {
     const activeTab = _.has(categories, selected);
 
     return (
-      <VerticalTabs restrictTabs activeTab={activeTab} shown="true">
+      <VerticalTabs restrictTabs activeTab={activeTab}>
         {_.map(categories, (category) => renderTabs(category, selected))}
       </VerticalTabs>
     );
   };
 
-  const renderFilterGroup = (filterGroup, groupName) => {
+  const renderFilterGroup = (filterGroup: Record<string, FilterItem>, groupName: string) => {
     const maxShown = 5;
     const showMoreText = t('public~Show {{numRemaining}} more', {
       numRemaining: Object.keys(filterGroup).length - maxShown,
@@ -794,7 +906,9 @@ export const TileViewPage = (props) => {
               key={filterName}
               count={_.get(filterCounts, [groupName, filterName], 0)}
               checked={active}
-              onClick={(e) => onFilterChange(groupName, filterName, e.target.checked)}
+              onClick={(e) =>
+                onFilterChange(groupName, filterName, (e.target as HTMLInputElement).checked)
+              }
               title={label}
               data-test={`${groupName}-${_.kebabCase(filterName)}`}
             >
@@ -813,7 +927,7 @@ export const TileViewPage = (props) => {
           if (groupName === FilterTypes.keyword) {
             return;
           }
-          return renderFilterGroup(filterGroup, groupName);
+          return renderFilterGroup(filterGroup as Record<string, FilterItem>, groupName);
         })}
       </FilterSidePanel>
     );
@@ -900,27 +1014,3 @@ export const TileViewPage = (props) => {
 };
 
 TileViewPage.displayName = 'TileViewPage';
-
-TileViewPage.propTypes = {
-  items: PropTypes.array,
-  itemsSorter: PropTypes.func.isRequired,
-  getAvailableCategories: PropTypes.func.isRequired,
-  getAvailableFilters: PropTypes.func,
-  filterGroups: PropTypes.array.isRequired,
-  filterGroupNameMap: PropTypes.object,
-  renderFilterGroup: PropTypes.func,
-  keywordCompare: PropTypes.func.isRequired,
-  renderTile: PropTypes.func.isRequired,
-  emptyStateTitle: PropTypes.string,
-  emptyStateInfo: PropTypes.string,
-  groupByTypes: PropTypes.object,
-};
-
-TileViewPage.defaultProps = {
-  items: null,
-  getAvailableFilters: determineAvailableFilters,
-  filterGroupNameMap: {},
-  renderFilterGroup: null,
-  emptyStateTitle: 'No Results Match the Filter Criteria',
-  emptyStateInfo: 'No items are being shown due to the filters being applied.',
-};

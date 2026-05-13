@@ -1,5 +1,4 @@
-import { PureComponent } from 'react';
-import * as PropTypes from 'prop-types';
+import type { FC, ReactElement, ReactNode } from 'react';
 import * as _ from 'lodash';
 import * as fuzzy from 'fuzzysearch';
 import { useTranslation } from 'react-i18next';
@@ -28,18 +27,96 @@ import { ResourceName } from './resource-icon';
 //       resource: requests.cpu
 //       divisor: 1 // 1 is default
 
-const getSpacer = (configMap, secret) => {
-  const spacerBefore = new Set();
-  return _.isEmpty(configMap) || _.isEmpty(secret) ? spacerBefore : spacerBefore.add(secret);
+type K8sItemList = {
+  items?: Array<{
+    metadata: { name: string };
+    data?: Record<string, string>;
+  }>;
 };
 
-const getKeys = (keyMap) => {
-  const itemKeys = {};
+type RefValue = {
+  name: string;
+  key?: string;
+  pairKey?: string;
+};
+
+export type RefChangeValue = Record<string, RefValue>;
+
+type FieldRefData = {
+  fieldPath: string;
+};
+
+type ResourceFieldRefData = {
+  containerName: string;
+  resource: string;
+};
+
+type NameKeyDropdownPairProps = {
+  name: string;
+  pairKey: string;
+  configMaps: K8sItemList;
+  secrets: K8sItemList;
+  serviceAccounts?: K8sItemList;
+  onChange: (value: RefChangeValue) => void;
+  kind: string;
+  nameTitle: ReactNode;
+  placeholderString: string;
+  isKeyRef?: boolean;
+};
+
+type ConfigMapSecretProps = {
+  data: RefValue;
+  configMaps: K8sItemList;
+  secrets: K8sItemList;
+  serviceAccounts?: K8sItemList;
+  onChange: (value: RefChangeValue) => void;
+  disabled: boolean;
+  kind: string;
+};
+
+type RefComponentProps = {
+  data: FieldRefData | ResourceFieldRefData | RefValue;
+  configMaps?: K8sItemList;
+  secrets?: K8sItemList;
+  serviceAccounts?: K8sItemList;
+  kind?: string;
+  onChange?: (value: RefChangeValue) => void;
+  disabled?: boolean;
+};
+
+type ComponentInfo = {
+  component: FC<RefComponentProps>;
+  kind?: string;
+};
+
+export type PairValue = string | number | Record<string, unknown>;
+
+export type ValueFromPairProps = {
+  pair: PairValue;
+  configMaps?: K8sItemList;
+  secrets?: K8sItemList;
+  serviceAccounts?: K8sItemList;
+  onChange?: (e: { target: { value: RefChangeValue } }) => void;
+  disabled?: boolean;
+};
+
+const getSpacer = (
+  configMap: string | Record<never, never>,
+  secret: string | Record<never, never>,
+) => {
+  const spacerBefore = new Set<string>();
+  return _.isEmpty(configMap) || _.isEmpty(secret)
+    ? spacerBefore
+    : spacerBefore.add(secret as string);
+};
+
+const getKeys = (keyMap: Record<string, string> | undefined) => {
+  const itemKeys: Record<string, string> = {};
   _.mapKeys(keyMap, (value, key) => (itemKeys[key] = key));
   return itemKeys;
 };
 
-export const NameKeyDropdownPair = ({
+export const NameKeyDropdownPair: FC<NameKeyDropdownPairProps> = ({
   name,
   pairKey,
   configMaps,
@@ -53,28 +130,32 @@ export const NameKeyDropdownPair = ({
 }) => {
   const { t } = useTranslation();
 
-  const getHeaders = (configMap, secret, serviceAccount) => {
-    const headers = {};
+  const getHeaders = (
+    configMap: string | Record<never, never>,
+    secret: string | Record<never, never>,
+    serviceAccount: string | Record<never, never>,
+  ) => {
+    const headers: Record<string, string> = {};
     if (configMap && !_.isEmpty(configMap)) {
-      headers[configMap] = t('public~ConfigMaps');
+      headers[configMap as string] = t('public~ConfigMaps');
     }
     if (secret && !_.isEmpty(secret)) {
-      headers[secret] = t('public~Secrets');
+      headers[secret as string] = t('public~Secrets');
     }
     if (serviceAccount && !_.isEmpty(serviceAccount)) {
-      headers[serviceAccount] = t('public~ServiceAccounts');
+      headers[serviceAccount as string] = t('public~ServiceAccounts');
     }
 
     return headers;
   };
 
-  let itemKeys = {};
-  let refProperty;
-  const cmItems = {};
-  const secretItems = {};
-  const saItems = {};
-  const nameAutocompleteFilter = (text, item) => fuzzy(text, item.props.name);
-  const keyAutocompleteFilter = (text, item) => fuzzy(text, item);
+  let itemKeys: Record<string, string> = {};
+  let refProperty: string;
+  const cmItems: Record<string, ReactNode> = {};
+  const secretItems: Record<string, ReactNode> = {};
+  const saItems: Record<string, ReactNode> = {};
+  const nameAutocompleteFilter = (text: string, item: ReactElement) => fuzzy(text, item.props.name);
+  const keyAutocompleteFilter = (text: string, item: string) => fuzzy(text, item);
   const keyTitle = _.isEmpty(pairKey) ? t('public~Select a key') : pairKey;
   const cmRefProperty = isKeyRef ? 'configMapKeyRef' : 'configMapRef';
   const secretRefProperty = isKeyRef ? 'secretKeyRef' : 'secretRef';
@@ -154,7 +235,7 @@ export const NameKeyDropdownPair = ({
   );
 };
 
-const FieldRef = ({ data: { fieldPath } }) => (
+const FieldRef: FC<{ data: FieldRefData }> = ({ data: { fieldPath } }) => (
   <>
     <div className="pairs-list__value-ro-field">
       <span className="pf-v6-c-form-control pf-m-disabled">
@@ -169,7 +250,7 @@ const FieldRef = ({ data: { fieldPath } }) => (
   </>
 );
 
-const ConfigMapSecretKeyRef = ({
+const ConfigMapSecretKeyRef: FC<ConfigMapSecretProps> = ({
   data: { name, key },
   configMaps,
   secrets,
@@ -217,7 +298,7 @@ const ConfigMapSecretKeyRef = ({
   );
 };
 
-const ConfigMapSecretRef = ({
+const ConfigMapSecretRef: FC<ConfigMapSecretProps> = ({
   data: { name, key },
   configMaps,
   secrets,
@@ -266,7 +347,9 @@ const ConfigMapSecretRef = ({
   );
 };
 
-const ResourceFieldRef = ({ data: { containerName, resource } }) => (
+const ResourceFieldRef: FC<{ data: ResourceFieldRefData }> = ({
+  data: { containerName, resource },
+}) => (
   <>
     <div className="pairs-list__value-ro-field">
       <span className="pf-v6-c-form-control pf-m-disabled">
@@ -286,7 +369,7 @@ const ResourceFieldRef = ({ data: { containerName, resource } }) => (
   </>
 );
 
-const keyStringToComponent = {
+const keyStringToComponent: Record<string, ComponentInfo> = {
   fieldRef: {
     component: FieldRef,
   },
@@ -321,45 +404,30 @@ const keyStringToComponent = {
   },
 };
 
-export class ValueFromPair extends PureComponent {
-  constructor(props) {
-    super(props);
-
-    this.onChangeVal = (...args) => this._onChangeVal(...args);
+export const ValueFromPair: FC<ValueFromPairProps> = ({
+  pair,
+  configMaps,
+  secrets,
+  serviceAccounts,
+  onChange,
+  disabled,
+}) => {
+  const valueFromKey = Object.keys(pair)[0];
+  const componentInfo = keyStringToComponent[valueFromKey];
+  if (!componentInfo) {
+    return null;
   }
 
-  _onChangeVal(value) {
-    const { onChange } = this.props;
-    const e = { target: { value } };
-    return onChange(e);
-  }
-
-  render() {
-    const { pair, configMaps, secrets, serviceAccounts, disabled } = this.props;
-    const valueFromKey = Object.keys(this.props.pair)[0];
-    const componentInfo = keyStringToComponent[valueFromKey];
-    if (!componentInfo) {
-      return null;
-    }
-
-    const Component = componentInfo.component;
-    return (
-      <Component
-        data={pair[valueFromKey]}
-        configMaps={configMaps}
-        secrets={secrets}
-        serviceAccounts={serviceAccounts}
-        kind={componentInfo.kind}
-        onChange={this.onChangeVal}
-        disabled={disabled}
-      />
-    );
-  }
-}
-ValueFromPair.propTypes = {
-  pair: PropTypes.object.isRequired,
-  configMaps: PropTypes.object,
-  secrets: PropTypes.object,
-  onChange: PropTypes.func,
-  disabled: PropTypes.bool,
+  const Component = componentInfo.component;
+  return (
+    <Component
+      data={pair[valueFromKey]}
+      configMaps={configMaps}
+      secrets={secrets}
+      serviceAccounts={serviceAccounts}
+      kind={componentInfo.kind}
+      onChange={(value: RefChangeValue) => onChange?.({ target: { value } })}
+      disabled={disabled}
+    />
+  );
 };

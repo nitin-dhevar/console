@@ -95,7 +95,7 @@ module.exports = {
     'react/jsx-uses-vars': 'error',
     'react/no-string-refs': 'warn',
     'react/no-unknown-property': 'error',
-    'react/prop-types': 'off',
+    'react/prop-types': 'off', // TODO: enable and fully specify component prop types
     'react/self-closing-comp': ['error', { component: true, html: false }],
     'react-hooks/rules-of-hooks': 'error',
     'react-hooks/exhaustive-deps': 'warn',
